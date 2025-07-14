@@ -1,0 +1,161 @@
+# I just copied this from the most common .gitignore templates for AI/ML projects - Acelle
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ML/Data Science Specific
+# Data files
+data/raw/
+data/processed/
+data/external/
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.json
+*.xml
+*.sqlite
+*.db
+*.h5
+*.hdf5
+*.parquet
+
+# Model files
+models/
+*.pkl
+*.pickle
+*.joblib
+*.model
+*.h5
+*.hdf5
+*.pb
+*.pth
+*.pt
+*.onnx
+*.tflite
+*.caffemodel
+*.prototxt
+
+# Checkpoints
+checkpoints/
+*.ckpt
+*.checkpoint
+
+# Logs
+logs/
+*.log
+wandb/
+mlruns/
+.neptune/
+
+# Results and outputs
+results/
+outputs/
+plots/
+figures/
+
+# Cache directories
+.cache/
+.dvc/cache/
+.mlflow/
+
+# Audio/Media files (for music classification)
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.ogg
+*.wma
+*.aac
+*.au
+*.aiff
+
+# Large files
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp

@@ -6,14 +6,33 @@ A machine learning project that classifies music as human-composed or AI-generat
 
 ```
 music-classifier/
+├── .github/                    # GitHub workflows
+│   └── workflows/
+│       └── ci.yml              # CI/CD pipeline
+├── config/                     # Configuration files
+│   ├── model_config.yaml       # Model hyperparameters
+│   └── data_config.yaml        # Data processing parameters
 ├── data/
 │   ├── raw/                    # Original, unprocessed datasets
 │   ├── processed/              # Cleaned and preprocessed data
 │   └── external/               # External data sources
+├── docs/                       # Documentation
+│   ├── api.md                  # API documentation
+│   └── model_architecture.md   # Model architecture details
+├── logs/                       # Training and inference logs
+├── models/                     # Trained model artifacts
+│   ├── specttra/               # SpecTTTra model checkpoints
+│   ├── llm2vec/                # LLM2Vec model checkpoints
+│   └── fusion/                 # Fusion model checkpoints
 ├── notebooks/
 │   ├── exploratory/            # Data exploration and visualization
 │   ├── modeling/               # Model development and training
 │   └── inference/              # Model deployment and predictions
+├── results/                    # Experiment results and reports
+├── scripts/                    # Execution scripts
+│   ├── train.py                # Training pipeline
+│   ├── evaluate.py             # Model evaluation
+│   └── predict.py              # Inference script
 ├── src/
 │   ├── __init__.py
 │   ├── preprocessing/          # Data preprocessing modules
@@ -37,34 +56,15 @@ music-classifier/
 │   └── api/                    # API endpoints
 │       ├── __init__.py
 │       └── endpoints.py        # FastAPI endpoints
-├── models/                     # Trained model artifacts
-│   ├── specttra/               # SpecTTTra model checkpoints
-│   ├── llm2vec/                # LLM2Vec model checkpoints
-│   └── fusion/                 # Fusion model checkpoints
-├── config/                     # Configuration files
-│   ├── model_config.yaml       # Model hyperparameters
-│   └── data_config.yaml        # Data processing parameters
 ├── tests/                      # Unit and integration tests
 │   ├── __init__.py
 │   ├── test_preprocessing.py
 │   ├── test_features.py
 │   └── test_models.py
-├── scripts/                    # Execution scripts
-│   ├── train.py                # Training pipeline
-│   ├── evaluate.py             # Model evaluation
-│   └── predict.py              # Inference script
-├── docs/                       # Documentation
-│   ├── api.md                  # API documentation
-│   └── model_architecture.md   # Model architecture details
-├── logs/                       # Training and inference logs
-├── results/                    # Experiment results and reports
-├── pyproject.toml              # Poetry configuration and dependencies
-├── poetry.lock                 # Locked dependency versions
-├── Dockerfile                  # Container configuration
 ├── .gitignore                  # Git ignore rules
-├── .github/                    # GitHub workflows
-│   └── workflows/
-│       └── ci.yml              # CI/CD pipeline
+├── Dockerfile                  # Container configuration
+├── poetry.lock                 # Locked dependency versions
+├── pyproject.toml              # Poetry configuration and dependencies
 └── README.md                   # Project documentation
 ```
 

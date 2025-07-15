@@ -5,7 +5,7 @@ A machine learning project that classifies music as human-composed or AI-generat
 ## Project Structure
 
 ```
-music-classifier/
+bach-or-bot/
 ├── .github/                    # GitHub workflows
 │   └── workflows/
 │       └── ci.yml              # CI/CD pipeline
@@ -111,13 +111,13 @@ music-classifier/
 
 2. **Clone your fork** to your local machine:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/music-classifier.git
-   cd music-classifier
+   git clone https://github.com/YOUR_USERNAME/bach-or-bot.git
+   cd bach-or-bot
    ```
 
 3. **Add upstream remote** to keep your fork updated:
    ```bash
-   git remote add upstream https://github.com/ORIGINAL_OWNER/music-classifier.git
+   git remote add upstream https://github.com/ORIGINAL_OWNER/bach-or-bot.git
    ```
 
 ### Environment Setup

@@ -1,6 +1,8 @@
 
 from src.preprocessing.preprocessor import dataset_read, bulk_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
+from src.llm2vectrain.model import load_llm2vec_model
+from src.llm2vectrain.llm2vec_trainer import l2vec_train
 
 def train_pipeline():
 
@@ -11,8 +13,8 @@ def train_pipeline():
     batches, Y = dataset_read()
     batch_count = 1
 
-     # Instantiate LLM2Vec Model
-      #llm2vec_model = LLM2Vec()
+    # Instantiate LLM2Vec Model
+    llm2vec_model = load_llm2vec_model()  # Store the model
 
     for batch in batches:
         audio, lyrics = None, None  # Gets rid of previous values consuming current memory
@@ -22,6 +24,7 @@ def train_pipeline():
         # Call the train method for both models
         audio_features = spectttra_train(audio) # Extract embeddings with SpecTTTra
         #lyrics = llm2vec_train(llm2vec_model, lyrics) 
+        lyrics_features = l2vec_train(llm2vec_model, lyrics) # Pass model and lyrics
 
     # TODO: Concatenate the vectors of audio_features + lyrics_features
     # conc_feat = audio_features + lyrics_features

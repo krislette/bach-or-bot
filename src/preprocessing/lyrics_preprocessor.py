@@ -74,3 +74,51 @@ class LyricsPreprocessor:
 
         return lyrics_cleaned
     
+
+    def musiclime_lyrics_extractor(self, lyrics: str):
+        """
+        Preprocess the input lyrics text.
+
+        Steps:
+        1. Removes empty lines or lines with metadata (e.g., [Chorus], (Verse)).
+        2. Applies case handling and punctuation removal based on settings.
+        3. Segments the lyrics into multiple lines.
+        3. Builds a list of lines from the lyrics
+
+        Parameters
+        ----------
+        lyrics : str
+            Raw lyrics text.
+
+        Returns
+        -------
+        line_segmented_lyrics : list
+            List of lines from the lyrics, processed using the class.
+        """
+        
+        # Instantiate line lyrics list
+        line_segmented_lyrics = []
+
+        # Split lyrics by lines
+        lyric_array = lyrics.split('\n')
+
+        for line in lyric_array:
+            line = line.strip()
+
+            # Skip unimportant lines like [Chorus] or (Verse)
+            if not line or re.match(r'^\[.*\]$', line) or re.match(r'^\(.*\)$', line):
+                continue
+            
+            # Case handling
+            if not self.keep_case:
+                line = line.lower()
+
+            # Punctuation handling
+            if not self.keep_punctuation:
+                line = re.sub(r'[^\w\s]', '', line)
+
+            # Append line to line segmented lyrics list
+            line_segmented_lyrics.append(line)
+            
+        return line_segmented_lyrics
+    

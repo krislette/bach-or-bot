@@ -64,10 +64,9 @@ def dataset_read():
         List of real/fake labels (in the formm of 0 and 1)
     """
     dataset = pd.read_csv("data/external/train_dataset_sample.csv")
-    data = dataset[dataset['split'] == 'train']
-    label = data['target'].tolist()
+    label = dataset['target'].tolist()
 
     # split into twenty sections
-    data_splits = np.array_split(data, 20)
+    data_splits = np.array_split(dataset, 20)
 
     return data_splits, label

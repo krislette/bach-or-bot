@@ -27,9 +27,8 @@ def train_pipeline():
         batch_count += 1
 
         # Call the train method for both models
-        audio_features = spectttra_train(audio) # Extract embeddings with SpecTTTra
-        #lyrics = llm2vec_train(llm2vec_model, lyrics) 
-        lyrics_features = l2vec_train(llm2vec_model, lyrics) # Pass model and lyrics
+        audio_features = spectttra_train(audio)
+        lyrics_features = l2vec_train(llm2vec_model, lyrics)
 
         # Concatenate the vectors of audio_features + lyrics_features
         results = np.concatenate([audio_features, lyrics_features], axis=1)

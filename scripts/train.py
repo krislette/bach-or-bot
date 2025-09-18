@@ -38,14 +38,11 @@ def train_pipeline():
         X[start_idx:start_idx + batch_size, :] = results
         start_idx += batch_size
 
-        break
-
-
     # Convert label list into np.array
     Y = np.array(Y)
 
     # Save both X and Y to an .npz file for easier loading
-    np.savez("data/processed/training_data2.npz", X=X, Y=Y)
+    np.savez("data/processed/training_data.npz", X=X, Y=Y)
 
     # TODO: Call MLP training script
 

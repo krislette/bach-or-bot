@@ -5,7 +5,7 @@ from peft import PeftModel
 import torch
 
 # For Single Input
-def l2vec_train(l2v, lyrics):
+def l2vec_single_train(l2v, lyrics):
     vectors = l2v.encode([lyrics])
     return vectors
 

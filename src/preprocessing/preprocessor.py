@@ -63,7 +63,7 @@ def dataset_read():
     label : list
         List of real/fake labels (in the formm of 0 and 1)
     """
-    dataset = pd.read_csv("data/external/train_dataset_sample.csv")
+    dataset = pd.read_csv("data/external/songs_dataset.csv")
     label = dataset['target'].tolist()
 
     # split into twenty sections

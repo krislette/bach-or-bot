@@ -12,9 +12,3 @@ DATASET_NPZ = BASE_DIR / config["paths"]["dataset_npz"]
 DATASET_CSV = BASE_DIR / config["paths"]["dataset_csv"]
 RAW_DIR = BASE_DIR / config["paths"]["raw_dir"]
 PROCESSED_DIR = BASE_DIR / config["paths"]["processed_dir"]
-
-# Debug
-print("NPZ:", DATASET_NPZ)
-print("CSV:", DATASET_CSV)
-print("RAW_DIR:", RAW_DIR)
-print("PROCESSED_DIR:", PROCESSED_DIR)

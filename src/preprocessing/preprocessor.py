@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
+
 from src.preprocessing.audio_preprocessor import AudioPreprocessor
 from src.preprocessing.lyrics_preprocessor import LyricsPreprocessor
+from src.utils.config_loader import DATASET_CSV
 
-dataset_path = "data/external/songs_dataset.csv"
+dataset_path = DATASET_CSV
 
 def bulk_preprocessing(batch, batch_count: int):
     """

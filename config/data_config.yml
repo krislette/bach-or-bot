@@ -1,0 +1,7 @@
+base_dir: "."
+
+paths:
+  dataset_npz: "data/processed/training_data.npz"
+  dataset_csv: "data/external/songs_dataset.csv"
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"

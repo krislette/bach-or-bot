@@ -1,8 +1,9 @@
-from pathlib import Path
-
 import torchaudio
+
+from pathlib import Path
 from torchaudio import functional as AF
 from torch.nn import functional as F
+from src.utils.config_loader import RAW_DIR, PROCESSED_DIR
 
 # Gets the absolute path so that we can append our folder paths.
 CURRENT_PATH = Path().absolute()
@@ -41,8 +42,8 @@ class AudioPreprocessor:
         self.INPUT_SAMPLING = 48000
         self.TARGET_SAMPLING = 16000
         self.TARGET_NUM_SAMPLE = 1920000    # This means 120 seconds or 2 minutes
-        self.INPUT_PATH = CURRENT_PATH / f"data/raw"
-        self.OUTPUT_PATH = CURRENT_PATH / f"data/processed"
+        self.INPUT_PATH = CURRENT_PATH / RAW_DIR
+        self.OUTPUT_PATH = CURRENT_PATH / PROCESSED_DIR
         self.WAVEFORM_NORM = waveform_norm
         self.SPEC_NORM = spec_norm
 

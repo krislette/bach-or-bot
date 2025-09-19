@@ -3,6 +3,8 @@ import numpy as np
 from src.preprocessing.audio_preprocessor import AudioPreprocessor
 from src.preprocessing.lyrics_preprocessor import LyricsPreprocessor
 
+dataset_path = "data/external/songs_dataset.csv"
+
 def bulk_preprocessing(batch, batch_count: int):
     """
     Applies audio and lyrics preprocessing to a training batch
@@ -63,11 +65,10 @@ def dataset_read():
     label : list
         List of real/fake labels (in the formm of 0 and 1)
     """
-    dataset = pd.read_csv("data/external/train_dataset_sample.csv")
-    data = dataset[dataset['split'] == 'train']
-    label = data['target'].tolist()
+    dataset = pd.read_csv(dataset_path)
+    label = dataset['target'].tolist()
 
     # split into twenty sections
-    data_splits = np.array_split(data, 20)
+    data_splits = np.array_split(dataset, 20)
 
     return data_splits, label

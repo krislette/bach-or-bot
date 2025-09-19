@@ -3,20 +3,22 @@ from src.preprocessing.preprocessor import dataset_read, bulk_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
-import numpy as np
 from pathlib import Path
+from src.utils.config_loader import DATASET_NPZ
+
+import numpy as np
 
 def train_pipeline():
 
     # Instantiate X and Y vectors
     X, Y = None, None
 
-    dataset_path = Path("data/processed/training_data.npz")
+    dataset_path = Path(DATASET_NPZ)
 
     if dataset_path.exists():
         print("Training dataset already exists. Loading file...")
 
-        loaded_data = np.load("data/processed/training_data.npz")
+        loaded_data = np.load(DATASET_NPZ)
         X = loaded_data["X"]
         Y = loaded_data["Y"]
     else:
@@ -52,7 +54,7 @@ def train_pipeline():
         Y = np.array(Y)
 
         # Save both X and Y to an .npz file for easier loading
-        np.savez("data/processed/training_data.npz", X=X, Y=Y)
+        np.savez(DATASET_NPZ, X=X, Y=Y)
 
     # TODO: Call MLP training script
 

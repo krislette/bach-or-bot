@@ -1,0 +1,7 @@
+mlp:
+  hidden_layers: [256, 128, 64] # 3 hidden layers
+  dropout: [0.3, 0.2, 0.0] # Dropout rates for each layer
+  learning_rate: 0.001 # Adam optimizer
+  batch_size: 32 # Number of samples processed together
+  epochs: 50 # Maximum training iterations
+  patience: 5 # Early stopping patience

@@ -1,4 +1,5 @@
 import torchaudio
+import io
 
 from pathlib import Path
 from torchaudio import functional as AF
@@ -93,7 +94,8 @@ class AudioPreprocessor:
             The original sampling rate of the audio.
         """
         try:
-            waveform, sample_rate = torchaudio.load(audiofile)
+            buffer = io.BytesIO(audiofile)
+            waveform, sample_rate = torchaudio.load(buffer)
         except Exception as e:
             raise RuntimeError(f"Error: File cannot be loaded. Check the filename and type. {e}")
 
@@ -144,7 +146,7 @@ class AudioPreprocessor:
 
         if self.TARGET_NUM_SAMPLE < num_samples:
             print(f"Audio {num_samples} longer than {self.TARGET_NUM_SAMPLE}. Starting trimming.")
-            return waveform[:self.TARGET_NUM_SAMPLE]
+            return waveform[..., :self.TARGET_NUM_SAMPLE]
         elif self.TARGET_NUM_SAMPLE > num_samples:
             print(f"Audio {num_samples} shorter than {self.TARGET_NUM_SAMPLE}. Starting padding.")
             padding_amount = self.TARGET_NUM_SAMPLE - num_samples

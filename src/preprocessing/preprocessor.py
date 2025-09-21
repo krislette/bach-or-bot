@@ -72,7 +72,7 @@ def single_preprocessing(audio, lyric):
         Lyric string
     """
     # Instantiate preprocessor classes
-    audio_preprocessor = AudioPreprocessor()
+    audio_preprocessor = AudioPreprocessor(script="predict")
     lyric_preprocessor = LyricsPreprocessor()
 
     processed_song = audio_preprocessor(filename=audio)

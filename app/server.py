@@ -3,12 +3,18 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+# Utils/schemas imports
+from schemas import (
+    ErrorResponse,
+    ModelInfoResponse,
+    PredictionResponse,
+    PredictionXAIResponse,
+    WelcomeResponse,
+)
+from utils import load_config
+
 # Model/XAI-related imports
 # TODO: Import predict and predict with XAI function when available
-
-# Utils/schemas imports
-from schemas import ErrorResponse, PredictionResponse, PredictionXAIResponse
-from utils import load_config
 
 
 # Load config at startup
@@ -93,20 +99,22 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
     )
 
 
-@app.get("/")
+@app.get("/", response_model=WelcomeResponse, tags=["Root"])
 def root():
     """
     Root endpoint to check if the API is running.
     """
-    return {
-        "message": "Welcome to Bach or Bot API!",
-        "endpoints": {
+    return WelcomeResponse(
+        status="success",
+        message="Welcome to Bach or Bot API!",
+        endpoints={
             "/": "This welcome message",
             "/docs": "FastAPI auto-generated API docs",
-            "/api/v1/predict": "POST endpoint that returns a bach-or-bot prediction for a music sample",
-            "/api/v1/predict-xai": "POST endpoint that returns a bach-or-bot prediction with explainability for a music sample",
+            "/api/v1/model/info": "Model information and capabilities",
+            "/api/v1/predict": "POST endpoint for bach-or-bot prediction",
+            "/api/v1/predict-xai": "POST endpoint for prediction with explainability",
         },
-    }
+    )
 
 
 @app.post(
@@ -167,5 +175,33 @@ async def predict_music_with_xai(
             # results=preds,
             # xai_results=xai_scores
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/model/info", response_model=ModelInfoResponse, tags=["Model"])
+async def get_model_info():
+    """
+    Get information about the current model and its capabilities.
+    """
+    try:
+        # Get supported formats from config
+        supported_formats = [fmt.replace("audio/", "") for fmt in ALLOWED_AUDIO_TYPES]
+
+        return ModelInfoResponse(
+            status="success",
+            message="Model information retrieved successfully",
+            model_name="Bach or Bot",
+            model_version="1.0.0",  # TODO: Load from model metadata when available
+            supported_formats=supported_formats,
+            max_file_size_mb=config["file_upload"]["max_file_size_mb"],
+            training_info={
+                "dataset": "Human-Composed and AI-generated music samples",
+                "architecture": "To be specified",  # TODO: Update when model is implemented
+                "accuracy": "To be determined",  # TODO: Update with actual metrics
+            },
+            last_updated="2024-01-01T00:00:00Z",  # TODO: Update with actual timestamp
+        )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

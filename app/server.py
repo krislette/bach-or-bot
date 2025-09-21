@@ -6,6 +6,9 @@ from fastapi.responses import JSONResponse
 # Model/XAI-related imports
 # TODO: Import predict and predict with XAI function when available
 
+# Utils/schemas imports
+from schemas import ErrorResponse, PredictionResponse
+
 
 # Initialize fast API app
 app = FastAPI(title="Bach or Bot API", version="1.0.0")
@@ -37,27 +40,39 @@ def root():
     }
 
 
-@app.post("/api/v1/predict")
+@app.post(
+    "/api/v1/predict",
+    response_model=PredictionResponse,
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def predict_music(lyrics: str = Form(...), audio_file: UploadFile = File(...)):
     """
     Endpoint to predict whether a music sample is human-composed or AI-generated.
     """
     try:
+        if audio_file.content_type not in ["audio/wav", "audio/mpeg"]:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "code": 1001,
+                    "message": "Invalid file type. Only .wav and .mp3 are supported.",
+                },
+            )
+
         # Read the uploaded audio file
         audio_content = await audio_file.read()
 
         # TODO: Implement calling of predict function here
         # results = predict(audio_file)
 
-        return JSONResponse(
-            content={
-                "status": "success",
-                "lyrics": lyrics,
-                "audio_file_name": audio_file.filename,
-                "audio_content_type": audio_file.content_type,
-                "audio_file_size": len(audio_content),
-                # "results": preds
-            }
+        return PredictionResponse(
+            status="success",
+            lyrics=lyrics,
+            audio_file_name=audio_file.filename,
+            audio_content_type=audio_file.content_type,
+            audio_file_size=len(audio_content),
+            # results=preds
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

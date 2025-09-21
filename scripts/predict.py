@@ -47,8 +47,12 @@ def predict_pipeline(audio, lyrics: str):
     results = np.concatenate([audio_features[0], lyrics_features[0]])
 
     # TODO: Call MLP predict script
-    # model_predict(results)
+    # prediction = model_predict(results)
 
+    return {
+        "label": prediction,
+        "prediction": "Fake" if prediction == 0 else "Real"
+    }
 
 
 

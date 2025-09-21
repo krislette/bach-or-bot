@@ -1,5 +1,5 @@
 # Fast API imports
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 # TODO: Import predict and predict with XAI function when available
 
 # Utils/schemas imports
-from schemas import ErrorResponse, PredictionResponse
+from schemas import ErrorResponse, PredictionResponse, PredictionXAIResponse
 
 
 # Initialize fast API app
@@ -22,6 +22,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    # Map common HTTP status codes to error codes
+    error_code_map = {
+        400: 1001,
+        422: 1002,
+        500: 1003,
+    }
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "status": "error",
+            "code": error_code_map.get(exc.status_code, 9999),
+            "message": str(exc.detail),
+        },
+    )
 
 
 @app.get("/")
@@ -50,14 +69,11 @@ async def predict_music(lyrics: str = Form(...), audio_file: UploadFile = File(.
     Endpoint to predict whether a music sample is human-composed or AI-generated.
     """
     try:
+        # Check if the audio file's type is either a .mp3 or .wav file
         if audio_file.content_type not in ["audio/wav", "audio/mpeg"]:
             raise HTTPException(
                 status_code=400,
-                detail={
-                    "status": "error",
-                    "code": 1001,
-                    "message": "Invalid file type. Only .wav and .mp3 are supported.",
-                },
+                detail="Invalid file type. Only .wav and .mp3 are supported.",
             )
 
         # Read the uploaded audio file
@@ -78,7 +94,11 @@ async def predict_music(lyrics: str = Form(...), audio_file: UploadFile = File(.
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/v1/predict-xai")
+@app.post(
+    "/api/v1/predict-xai",
+    response_model=PredictionXAIResponse,
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def predict_music_with_xai(
     lyrics: str = Form(...), audio_file: UploadFile = File(...)
 ):
@@ -86,6 +106,13 @@ async def predict_music_with_xai(
     Endpoint to predict whether a music sample is human-composed or AI-generated with explainability.
     """
     try:
+        # Check if the audio file's type is either a .mp3 or .wav file
+        if audio_file.content_type not in ["audio/wav", "audio/mpeg"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file type. Only .wav and .mp3 are supported.",
+            )
+
         # Read the uploaded audio file
         audio_content = await audio_file.read()
 
@@ -93,15 +120,14 @@ async def predict_music_with_xai(
         # preds = predict(audio_file)
         # xai_scores = predict_with_musiclime(audio_file)
 
-        return JSONResponse(
-            content={
-                "status": "success",
-                "lyrics": lyrics,
-                "audio_file_name": audio_file.filename,
-                "audio_content_type": audio_file.content_type,
-                "audio_file_size": len(audio_content),
-                # "results": preds
-            }
+        return PredictionXAIResponse(
+            status="success",
+            lyrics=lyrics,
+            audio_file_name=audio_file.filename,
+            audio_content_type=audio_file.content_type,
+            audio_file_size=len(audio_content),
+            # results=preds,
+            # xai_results=xai_scores
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

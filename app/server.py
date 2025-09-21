@@ -1,7 +1,6 @@
 # Fast API imports
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 # Utils/schemas imports
 from schemas import (
@@ -78,25 +77,6 @@ def validate_lyrics(lyrics: str = Form(...)):
         )
 
     return lyrics
-
-
-@app.exception_handler(HTTPException)
-async def custom_http_exception_handler(request: Request, exc: HTTPException):
-    # Map common HTTP status codes to error codes
-    error_code_map = {
-        400: 1001,
-        422: 1002,
-        500: 1003,
-    }
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "status": "error",
-            "code": error_code_map.get(exc.status_code, 9999),
-            "message": str(exc.detail),
-        },
-    )
 
 
 @app.get("/", response_model=WelcomeResponse, tags=["Root"])

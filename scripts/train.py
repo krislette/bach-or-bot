@@ -9,6 +9,19 @@ from src.utils.config_loader import DATASET_NPZ
 import numpy as np
 
 def train_pipeline():
+    """
+    Training script which includes preprocessing, feature extraction, and training the MLP model.
+
+    The train pipeline saves the train dataset in an .npz format.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+    """
 
     # Instantiate X and Y vectors
     X, Y = None, None
@@ -30,17 +43,22 @@ def train_pipeline():
         # Instantiate LLM2Vec Model
         llm2vec_model = load_llm2vec_model()
 
-        # Preallocate space for the whole concatenated sequence (20,000 samples)
+        # Preallocate space for the whole concatenated sequence (50,000 samples)
         X = np.zeros((len(Y), 4480), dtype=np.float32)
 
         start_idx = 0
         for batch in batches:
             audio, lyrics = None, None  # Gets rid of previous values consuming current memory
+            
+            print(f"Bulk Preprocessing batch {batch_count}...")
             audio, lyrics = bulk_preprocessing(batch, batch_count)
             batch_count += 1
 
-            # Call the train method for both models
+            # Call the train method for SpecTTTra
+            print(f"\nStarting SpecTTTra feature extraction...")
             audio_features = spectttra_train(audio)
+
+            print(f"\nStarting LLM2Vec feature extractor...")
             lyrics_features = l2vec_train(llm2vec_model, lyrics)
 
             # Concatenate the vectors of audio_features + lyrics_features

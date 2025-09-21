@@ -11,7 +11,9 @@ file_upload:
   max_lyrics_length: 10000
   allowed_audio_types:
     - "audio/wav"
+    - "audio/mpeg"
     - "audio/mp3"
+    - "application/octet-stream"
 
 # API Configuration
 api:

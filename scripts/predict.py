@@ -41,10 +41,10 @@ def predict_pipeline(audio, lyrics: str):
 
     # Call the train method for both models
     audio_features = spectttra_train(audio)
-    lyrics_features = l2vec_train(llm2vec_model, lyrics)
+    lyrics_features = l2vec_train(llm2vec_model, [lyrics])
 
     # Concatenate the vectors of audio_features + lyrics_features
-    results = np.concatenate([audio_features, lyrics_features], axis=1)
+    results = np.concatenate([audio_features[0], lyrics_features[0]])
 
     # TODO: Call MLP predict script
     # model_predict(results)

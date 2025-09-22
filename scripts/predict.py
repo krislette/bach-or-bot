@@ -1,23 +1,24 @@
-
 from src.preprocessing.preprocessor import single_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
-from pathlib import Path
 from src.utils.config_loader import DATASET_NPZ
+from src.models.mlp import MLPClassifier, load_config
 
+from pathlib import Path
 import numpy as np
+
 
 def predict_pipeline(audio, lyrics: str):
     """
-    Predict script which includes preprocessing, feature extraction, and 
+    Predict script which includes preprocessing, feature extraction, and
     training the MLP model for a single data sample.
 
     Parameters
     ----------
     audio : audio_object
         Audio object file
-    
+
     lyric : string
         Lyric string
 
@@ -46,14 +47,17 @@ def predict_pipeline(audio, lyrics: str):
     # Concatenate the vectors of audio_features + lyrics_features
     results = np.concatenate([audio_features[0], lyrics_features[0]])
 
-    # TODO: Call MLP predict script
-    # prediction = model_predict(results)
+    # Load MLP model
+    config = load_config()
+    input_dim = 384 + 4096
+    mlp_model = MLPClassifier(input_dim, config)
+    mlp_model.load_model("model/mlp/mlp_best.pth")
 
-    return {
-        "label": prediction,
-        "prediction": "Fake" if prediction == 0 else "Real"
-    }
+    # Get prediction
+    prediction_prob = mlp_model.predict_single(results)
+    prediction = 1 if prediction_prob > 0.5 else 0
 
+    return {"label": prediction, "prediction": "Fake" if prediction == 0 else "Real"}
 
 
 if __name__ == "__main__":

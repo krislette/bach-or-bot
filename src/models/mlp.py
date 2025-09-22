@@ -29,45 +29,41 @@ class MLPModel(nn.Module):
     """
     
     def __init__(self, input_dim: int, config: Dict):
-        """
-        Initialize MLP model.
-        
-        Args:
-            input_dim: Dimension of input features
-            config: Configuration dictionary with model parameters
-        """
         super(MLPModel, self).__init__()
         
         self.hidden_layers = config["hidden_layers"]
         self.dropout_rates = config["dropout"]
         
-        # Build layers
+        # Build layers with batch normalization
         layers = []
         prev_dim = input_dim
+        
+        # Input layer with batch normalization
+        layers.append(nn.BatchNorm1d(input_dim))
         
         # Build hidden layers
         for i, units in enumerate(self.hidden_layers):
             # Linear layer
             layers.append(nn.Linear(prev_dim, units))
             
+            # Batch normalization
+            layers.append(nn.BatchNorm1d(units))
+            
             # LeakyReLU activation
             layers.append(nn.LeakyReLU(negative_slope=0.01))
             
-            # Dropout layer if specified
-            dropout_rate = self.dropout_rates[i] if i < len(self.dropout_rates) else 0.0
+            # Dropout layer
+            dropout_rate = self.dropout_rates[i] if i < len(self.dropout_rates) else 0.5
             if dropout_rate > 0:
                 layers.append(nn.Dropout(dropout_rate))
             
             prev_dim = units
         
-        # Output layer with sigmoid
+        # Output layer (no batch norm or dropout here)
         layers.append(nn.Linear(prev_dim, 1))
         layers.append(nn.Sigmoid())
         
-        # Create sequential model
         self.network = nn.Sequential(*layers)
-        
-        # Initialize weights
         self._initialize_weights()
         
         logger.info(f"Built MLP with {len(self.hidden_layers)} hidden layers: {self.hidden_layers}")
@@ -76,7 +72,7 @@ class MLPModel(nn.Module):
         """Initialize model weights using Xavier initialization."""
         for layer in self.network:
             if isinstance(layer, nn.Linear):
-                nn.init.xavier_uniform_(layer.weight)
+                nn.init.xavier_uniform_(layer.weight, gain=0.5)
                 nn.init.zeros_(layer.bias)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -106,7 +102,16 @@ class MLPClassifier:
         # Adam optimizer
         self.optimizer = optim.Adam(
             self.model.parameters(), 
-            lr=config.get("learning_rate", 0.001)
+            lr=config.get("learning_rate", 0.001),
+            weight_decay=config.get("weight_decay", 0.01)
+        )
+
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, 
+            mode='min', 
+            factor=0.5, 
+            patience=5,
+            min_lr=1e-7
         )
         
         # Binary Cross Entropy loss
@@ -170,6 +175,13 @@ class MLPClassifier:
                 
                 # Backward pass
                 loss.backward()
+
+                if self.config.get("gradient_clipping"):
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(), 
+                        self.config["gradient_clipping"]
+                    )
+
                 self.optimizer.step()
                 
                 # Statistics
@@ -190,6 +202,8 @@ class MLPClassifier:
             val_loss, val_acc = self._validate(val_loader)
             history['val_loss'].append(val_loss)
             history['val_acc'].append(val_acc)
+
+            self.scheduler.step(val_loss)
             
             logger.info(f'Epoch {epoch+1}: Train Loss: {avg_train_loss:.4f}, Train Acc: {train_acc:.2f}%, '
                        f'Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%')

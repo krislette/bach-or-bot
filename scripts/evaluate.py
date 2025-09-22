@@ -60,6 +60,11 @@ def evaluate_model(model_path: str = "models/fusion/mlp_multimodal.pth"):
     
     # Get predictions for detailed analysis
     probabilities, predictions = mlp_classifier.predict(X_test)
+
+    # Show a few sample predictions
+    for i in range(10): 
+        print(f"True: {y_test[i]}, Pred: {predictions[i]}, Prob: {probabilities[i]:.4f}")
+
     
     logger.info("=== Evaluation Results ===")
     logger.info(f"Test Accuracy: {test_results['test_accuracy']:.2f}%")

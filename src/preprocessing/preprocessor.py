@@ -40,7 +40,7 @@ def bulk_preprocessing(batch, batch_count: int):
 
     for row in batch.itertuples():
         print(f"Batch {batch_count}     -    {count}/{batch_length}")
-        processed_song = audio_preprocessor(filename=row.id)
+        processed_song = audio_preprocessor(filename=row.directory)
         audio_list.append(processed_song)
 
         processed_lyric = lyric_preprocessor(lyrics=row.lyrics)

@@ -51,6 +51,37 @@ def bulk_preprocessing(batch, batch_count: int):
     return audio_list, lyric_list
 
 
+def single_preprocessing(audio, lyric):
+    """
+    Preprocesses a single record of audio and lyric data
+
+    Parameters
+    ----------
+    audio : audio_object
+        Audio object file
+    
+    lyric : string
+        Lyric string
+
+    Returns
+    -------
+    processed_song : audio_object
+        Audio object file
+    
+    processed_lyric : string
+        Lyric string
+    """
+    # Instantiate preprocessor classes
+    audio_preprocessor = AudioPreprocessor(script="predict")
+    lyric_preprocessor = LyricsPreprocessor()
+
+    processed_song = audio_preprocessor(filename=audio)
+
+    processed_lyric = lyric_preprocessor(lyrics=lyric)
+
+    return processed_song, processed_lyric
+
+
 def dataset_read():
     """
     Reads the csv file, filters the records of train split, returns batches of data

@@ -78,6 +78,24 @@ class MLPModel(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the network."""
         return self.network(x)
+    
+    def mixup(X, y, alpha=0.2):
+        """Apply MixUp augmentation to a batch."""
+        if alpha <= 0:
+            return X, y, y, 1.0  # no mixing
+
+        lam = np.random.beta(alpha, alpha)
+        batch_size = X.size(0)
+        index = torch.randperm(batch_size).to(X.device)
+
+        mixed_X = lam * X + (1 - lam) * X[index]
+        y_a, y_b = y, y[index]
+        return mixed_X, y_a, y_b, lam
+
+
+    def mixup_loss(criterion, pred, y_a, y_b, lam):
+        """Compute MixUp loss."""
+        return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
 
 
 class MLPClassifier:
@@ -170,8 +188,15 @@ class MLPClassifier:
                 
                 # Forward pass
                 self.optimizer.zero_grad()
-                outputs = self.model(batch_X)
-                loss = self.criterion(outputs, batch_y)
+
+                # Adding training augmentation if mixup value > 0
+                if self.config.get("mixup_alpha", 0) > 0:
+                    mixed_X, y_a, y_b, lam = MLPModel.mixup(batch_X, batch_y, alpha=self.config["mixup_alpha"])
+                    outputs = self.model(mixed_X)
+                    loss = MLPModel.mixup_loss(self.criterion, outputs, y_a, y_b, lam)
+                else:
+                    outputs = self.model(batch_X)
+                    loss = self.criterion(outputs, batch_y)
                 
                 # Backward pass
                 loss.backward()

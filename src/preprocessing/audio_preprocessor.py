@@ -66,7 +66,7 @@ class AudioPreprocessor:
             The original sampling rate of the audio.
         """
         try:
-            ext = 'wav'
+            ext = 'mp3'
             if '.' in filename:
                 filename, ext = filename.split('.')
             file_path = self.INPUT_PATH / f"{filename}.{ext}"

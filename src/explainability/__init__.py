@@ -45,8 +45,13 @@ from .factorization import Factorization, TimeOnlyFactorization, OpenunmixFactor
 # LIME components
 from .lime import LimeBase, LimeMusicExplainer
 
-# Explanation container and utilities
+# Explanation container
 from .musiclime import MultimodalExplanation
+
+# Explanation wrapper
+from .musiclime_wrapper import create_musiclime_wrapper
+
+# Utilities
 from .utils import (
     validate_audio_file,
     validate_lyrics_lines,
@@ -70,6 +75,8 @@ __all__ = [
     "LimeMusicExplainer",
     # Explanation
     "MultimodalExplanation",
+    # Explanation Wrapper
+    "create_musiclime_wrapper",
     # Utilities
     "validate_audio_file",
     "validate_lyrics_lines",

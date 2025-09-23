@@ -49,7 +49,7 @@ class AudioPreprocessor:
         self.SPEC_NORM = spec_norm
 
 
-    def load_saved_audio(self, filename):
+    def load_audio(self, audiofile):
         """
         Load an audio file from disk.
 
@@ -66,36 +66,17 @@ class AudioPreprocessor:
             The original sampling rate of the audio.
         """
         try:
-            ext = 'wav'
-            if '.' in filename:
-                filename, ext = filename.split('.')
-            file_path = self.INPUT_PATH / f"{filename}.{ext}"
-            waveform, sample_rate = torchaudio.load(file_path)
-        except Exception as e:
-            raise RuntimeError(f"Error: File cannot be loaded. Check the filename and type. {e}")
-
-        return waveform, sample_rate
-    
-
-    def load_audio(self, audiofile):
-        """
-        Load an audio file from passed parameter.
-
-        Parameters
-        ----------
-        audiofile : bytes
-            Audio file in the form of bytes, passed from the backend
-
-        Returns
-        -------
-        waveform : tensor
-            The mono audio waveform.
-        sample_rate : int
-            The original sampling rate of the audio.
-        """
-        try:
-            buffer = io.BytesIO(audiofile)
-            waveform, sample_rate = torchaudio.load(buffer)
+            if isinstance(audiofile, str):
+                if '.' not in audiofile:
+                    audiofile = f"{audiofile}.mp3"
+                file = self.INPUT_PATH / audiofile
+            elif isinstance(audiofile, (bytes, io.BytesIO)):
+                file = io.BytesIO(audiofile) if isinstance(audiofile, bytes) else audiofile
+                file.seek(0)
+            else:
+                raise ValueError(f"Unsupported audiofile type: {type(audiofile)}")
+            
+            waveform, sample_rate = torchaudio.load(file)
         except Exception as e:
             raise RuntimeError(f"Error: File cannot be loaded. Check the filename and type. {e}")
 
@@ -110,12 +91,12 @@ class AudioPreprocessor:
         ----------
         original_sr : int
             Original sampling rate of the waveform.
-        waveform : np.ndarray
+        waveform : tensor
             Input audio waveform.
 
         Returns
         -------
-        waveform : np.ndarray
+        waveform : tensor
             Resampled audio waveform at `TARGET_SAMPLING`.
         """
         if original_sr != self.TARGET_SAMPLING:
@@ -134,12 +115,12 @@ class AudioPreprocessor:
 
         Parameters
         ----------
-        waveform : np.ndarray
+        waveform : tensor
             Input audio waveform.
 
         Returns
         -------
-        waveform : np.ndarray
+        waveform : tensor
             Waveform of fixed length (trimmed or zero-padded).
         """
         num_samples = waveform.shape[-1]
@@ -164,14 +145,14 @@ class AudioPreprocessor:
 
         Parameters
         ----------
-        waveform : np.ndarray
+        waveform : tensor
             Input audio waveform.
         method : {"std", "minmax"}
             Normalization strategy.
 
         Returns
         -------
-        waveform : np.ndarray
+        waveform : tensor
             Normalized audio waveform.
         """
         if method == "std":
@@ -252,15 +233,10 @@ class AudioPreprocessor:
 
         Returns
         -------
-        np.ndarray
+        tensor
             Normalized log-Mel spectrogram.
         """
-        waveform, sample_rate = None, None
-
-        if self.SCRIPT == "train":
-            waveform, sample_rate = self.load_saved_audio(filename)
-        else:
-            waveform, sample_rate = self.load_audio(filename)
+        waveform, sample_rate = self.load_audio(filename)
     
         # Resample the audio to 16kHz
         waveform = self.resample_audio(original_sr=sample_rate, waveform=waveform)

@@ -133,10 +133,6 @@ def train_pipeline():
 
         # Save both X and Y to an .npz file for easier loading
         np.savez(DATASET_NPZ, X=X, Y=Y)
-
-    drop_index = [823, 2717, 538, 3230, 5297, 3510, 1025, 2460, 4157, 539]
-    X = np.delete(X, drop_index, axis=0)
-    Y = np.delete(Y, drop_index, axis=0)
     
     print("Starting MLP training...")
     train_mlp_model(X, Y)

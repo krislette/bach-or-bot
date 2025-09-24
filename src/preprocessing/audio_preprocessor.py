@@ -234,7 +234,8 @@ class AudioPreprocessor:
         # Normalize waveform (aligned with SONICS)
         waveform = self.normalize_waveform(waveform, method=self.WAVEFORM_NORM)
 
-        # Add some gaussian noise to the waveform
-        waveform += torch.randn_like(waveform) * 1e-4
+        # Add some gaussian noise to the waveform during training
+        if train:
+            waveform += torch.randn_like(waveform) * 1e-4
 
         return waveform

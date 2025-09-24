@@ -1,4 +1,5 @@
 import torchaudio
+import librosa
 import io
 import torch
 import random
@@ -53,37 +54,49 @@ class AudioPreprocessor:
 
     def load_audio(self, audiofile):
         """
-        Load an audio file from disk.
+        Load an MP3 audio file (disk or bytes) using librosa, 
+        then convert to a torch.Tensor.
 
         Parameters
         ----------
-        filename : str
-            Name of the file (without extension) to load from `INPUT_PATH`.
+        audiofile : str | bytes | io.BytesIO
+            Path (relative to INPUT_PATH) or in-memory audio bytes.
 
         Returns
         -------
-        waveform : tensor
-            The mono audio waveform.
+        waveform : torch.Tensor
+            Audio waveform as a tensor of shape (channels, num_samples).
         sample_rate : int
-            The original sampling rate of the audio.
+            Original sampling rate of the audio.
         """
         try:
             if isinstance(audiofile, str):
-                if '.' not in audiofile:
+                if not audiofile.endswith(".mp3"):
                     audiofile = f"{audiofile}.mp3"
                 file = self.INPUT_PATH / audiofile
+
+                y, sr = librosa.load(str(file), sr=None, mono=False)
+
             elif isinstance(audiofile, (bytes, io.BytesIO)):
                 file = io.BytesIO(audiofile) if isinstance(audiofile, bytes) else audiofile
                 file.seek(0)
+
+                y, sr = librosa.load(file, sr=None, mono=False)
+
             else:
                 raise ValueError(f"Unsupported audiofile type: {type(audiofile)}")
-            
-            waveform, sample_rate = torchaudio.load(file)
+
+            # Ensure consistent shape (channels, num_samples)
+            if y.ndim == 1:  # mono
+                y = y[None, :]  # (1, num_samples)
+            else:
+                y = y.T  # librosa returns (num_samples, channels)
+
+            waveform = torch.from_numpy(y).float()
+            return waveform, sr
 
         except Exception as e:
             raise RuntimeError(f"Error: File cannot be loaded. Check the filename and type. {e}")
-
-        return waveform, sample_rate
 
 
     def resample_audio(self, original_sr, waveform):
@@ -224,7 +237,7 @@ class AudioPreprocessor:
 
         # If there is a skip value provided, trim it
         if skip_time is not None and skip_time > 0:
-            print(f"Skipping first {skip_time:.2f} seconds.")
+            #print(f"Skipping first {skip_time:.2f} seconds.")
             start_sample = int(skip_time * self.TARGET_SAMPLING)
             waveform = waveform[:, start_sample:]
 

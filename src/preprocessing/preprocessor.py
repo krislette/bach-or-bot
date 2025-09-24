@@ -40,7 +40,7 @@ def bulk_preprocessing(batch, batch_count: int):
 
     for row in batch.itertuples():
         print(f"Batch {batch_count}     -    {count}/{batch_length}")
-        processed_song = audio_preprocessor(filename=row.directory)
+        processed_song = audio_preprocessor(file=row.directory, skip_time=row.skip_time, train=True)
         audio_list.append(processed_song)
 
         processed_lyric = lyric_preprocessor(lyrics=row.lyrics)
@@ -75,8 +75,8 @@ def single_preprocessing(audio, lyric):
     audio_preprocessor = AudioPreprocessor(script="predict")
     lyric_preprocessor = LyricsPreprocessor()
 
+    # Preprocess both song and lyrics
     processed_song = audio_preprocessor(filename=audio)
-
     processed_lyric = lyric_preprocessor(lyrics=lyric)
 
     return processed_song, processed_lyric
@@ -101,7 +101,7 @@ def dataset_read():
     dataset = pd.read_csv(dataset_path)
     label = dataset['target'].tolist()
 
-    # split into twenty sections
-    data_splits = np.array_split(dataset, 20)
+    # split into 25 sections (2,000 per batch from 50k sample)
+    data_splits = np.array_split(dataset, 25)
 
     return data_splits, label

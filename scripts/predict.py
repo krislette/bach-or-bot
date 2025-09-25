@@ -3,10 +3,12 @@ from src.preprocessing.preprocessor import single_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
+from src.models.mlp import build_mlp, load_config
 from pathlib import Path
 from src.utils.config_loader import DATASET_NPZ
 
 import numpy as np
+import torch
 
 def predict_pipeline(audio, lyrics: str):
     """
@@ -46,13 +48,29 @@ def predict_pipeline(audio, lyrics: str):
     # Concatenate the vectors of audio_features + lyrics_features
     results = np.concatenate([audio_features[0], lyrics_features[0]])
 
-    # TODO: Call MLP predict script
-    # prediction = model_predict(results)
+    # ---- Load MLP Classifier ----
+    config = load_config("config/model_config.yml")
+    classifier = build_mlp(input_dim=results.shape[0], config=config)
+
+    # Load trained weights (make sure this path matches where you saved your model)
+    model_path = "models/mlp.pth"
+    classifier.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
+    classifier.eval()
+
+    # Run prediction
+    prediction = classifier.predict_single(results)
 
     return {
-        "label": prediction,
+        "label": int(prediction),
         "prediction": "Fake" if prediction == 0 else "Real"
     }
+
+
+if __name__ == "__main__":
+    # Example usage (replace with real inputs)
+    audio = None  # your audio object
+    lyrics = "Some lyrics text here"
+    print(predict_pipeline(audio, lyrics))
 
 
 

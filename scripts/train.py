@@ -61,7 +61,7 @@ def train_mlp_model(X: np.ndarray, Y: np.ndarray):
     test_results = mlp_classifier.evaluate(X_test, y_test)
     
     # Save final model
-    mlp_classifier.save_model("models/fusion/mlp_multimodal.pth")
+    mlp_classifier.save_model("models/mlp/mlp_multimodal.pth")
     
     logger.info("MLP training completed successfully!")
     logger.info(f"Final test accuracy: {test_results['test_accuracy']:.2f}%")
@@ -116,9 +116,9 @@ def train_pipeline():
         # Save both X and Y to an .npz file for easier loading
         np.savez(DATASET_NPZ, X=X, Y=Y)
 
-    drop_index = [823, 2717, 538, 3230, 5297, 3510, 1025, 2460, 4157, 539]
-    X = np.delete(X, drop_index, axis=0)
-    Y = np.delete(Y, drop_index, axis=0)
+    # drop_index = [823, 2717, 538, 3230, 5297, 3510, 1025, 2460, 4157, 539]
+    # X = np.delete(X, drop_index, axis=0)
+    # Y = np.delete(Y, drop_index, axis=0)
     
     print("Starting MLP training...")
     train_mlp_model(X, Y)

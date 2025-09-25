@@ -15,33 +15,29 @@ CURRENT_PATH = Path().absolute()
 class AudioPreprocessor:
     """
     AudioPreprocessor is a utility class for loading, preprocessing, and converting
-    raw audio waveforms into normalized log-Mel spectrograms.
+    raw audio waveforms into normalized tensor waveforms.
 
     The preprocessing pipeline includes:
     - Loading audio from disk
     - Resampling to a target sampling rate (default: 16 kHz)
     - Trimming or padding to a fixed length (default: 120 seconds)
     - Waveform normalization (per-sample)
-    - Mel-spectrogram computation
-    - Log-scaling and spectrogram normalization
-    - Saving spectrograms as `.npy` files
+    - Returning or saving waveforms for testing.
+
 
     Parameters
     ----------
-    label : str
-        The label associated with the audio files ("real", "fake", etc.).
+    script : {"train"}, optional
+        Condition to apply certain training methods
+        
     waveform_norm : {"std", "minmax"}, optional
         Normalization method for waveforms:
         - "std": divide by standard deviation
         - "minmax": scale to [0, 1]
-    spec_norm : {"mean_std", "min_max", "simple"}, optional
-        Normalization method for spectrograms:
-        - "mean_std": standardize to zero mean, unit variance
-        - "min_max": scale to [0, 1]
-        - "simple": scale using (S - 40)/80 (used in some works)
+
     """
 
-    def __init__(self, script="train", waveform_norm="std", spec_norm="min_max"):
+    def __init__(self, script="train", waveform_norm="std"):
         self.SCRIPT = script
         self.INPUT_SAMPLING = 48000
         self.TARGET_SAMPLING = 16000
@@ -49,7 +45,6 @@ class AudioPreprocessor:
         self.INPUT_PATH = CURRENT_PATH / RAW_DIR
         self.OUTPUT_PATH = CURRENT_PATH / PROCESSED_DIR
         self.WAVEFORM_NORM = waveform_norm
-        self.SPEC_NORM = spec_norm
 
 
     def load_audio(self, audiofile):

@@ -8,3 +8,4 @@ mlp:
 
   weight_decay: 0.1 # L2 regularization
   gradient_clipping: 0.5 # Prevent exploding gradients
+  mixup_alpha: 0.2   # For data augmentation during trainign, 0 disables MixUp

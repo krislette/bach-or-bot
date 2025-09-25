@@ -5,3 +5,4 @@ paths:
   dataset_csv: "data/external/songs_dataset.csv"
   raw_dir: "data/raw"
   processed_dir: "data/processed"
+  pca_path: "data/processed/pca_model.pkl"

@@ -104,7 +104,7 @@ def train_pipeline():
         llm2vec_model = load_llm2vec_model()
 
         # Preallocate space for the whole concatenated sequence (50,000 samples)
-        X = np.zeros((len(Y), 4480), dtype=np.float32)
+        X = np.zeros((len(Y), 684), dtype=np.float32)
 
         start_idx = 0
         for batch in batches:

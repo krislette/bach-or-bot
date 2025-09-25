@@ -65,8 +65,8 @@ def single_preprocessing(audio, lyric: str):
 
     Returns
     -------
-    processed_song : audio_object
-        Audio object file
+    processed_song : tensor
+        Tensor version of the audio
     
     processed_lyric : string
         Lyric string

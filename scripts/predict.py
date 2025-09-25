@@ -65,14 +65,8 @@ def predict_pipeline(audio, lyrics: str):
         "prediction": "Fake" if prediction == 0 else "Real"
     }
 
-
 if __name__ == "__main__":
     # Example usage (replace with real inputs)
     audio = None  # your audio object
     lyrics = "Some lyrics text here"
     print(predict_pipeline(audio, lyrics))
-
-
-
-if __name__ == "__main__":
-    predict_pipeline()

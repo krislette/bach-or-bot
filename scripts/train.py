@@ -2,7 +2,7 @@
 from src.preprocessing.preprocessor import dataset_read, bulk_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.model import load_llm2vec_model
-from src.llm2vectrain.llm2vec_trainer import l2vec_train
+from src.llm2vectrain.llm2vec_trainer import *
 from src.models.mlp import build_mlp, load_config
 
 from src.utils.config_loader import DATASET_NPZ
@@ -97,32 +97,50 @@ def train_pipeline():
         # Instantiate LLM2Vec Model
         llm2vec_model = load_llm2vec_model()
 
-        # Preallocate space for the whole concatenated sequence (50,000 samples)
-        X = np.zeros((len(Y), 684), dtype=np.float32)
+        all_audio_features = []
+        all_lyrics_features = []
 
-        start_idx = 0
         for batch in batches:
 
             print(f"Bulk Preprocessing batch {batch_count}...")
+            audio, lyrics = None, None
             audio, lyrics = bulk_preprocessing(batch, batch_count)
+
+            audio_features = spectttra_train(audio)
+            lyrics_features = l2vec_train(llm2vec_model, lyrics) # l2vec_train now only encodes
+
+            all_audio_features.append(audio_features)
+            all_lyrics_features.append(lyrics_features)
+
+            print(f"Processed batch {batch_count} for feature collection. Audio shape: {audio_features.shape}, Lyrics shape: {lyrics_features.shape}")
+            
+            # Delete stored instance for next batch to remove overhead
+            del audio, lyrics
+            
             batch_count += 1
 
-            # Call the train method for SpecTTTra
-            print(f"\nStarting SpecTTTra feature extraction...")
-            audio_features = spectttra_train(audio)
+        # Code below here means that the batches are done.
 
-            print(f"\nStarting LLM2Vec feature extractor...")
-            lyrics_features = l2vec_train(llm2vec_model, lyrics)
+        pca_trainer = SimplePCATrainer()
 
-            # Concatenate the vectors of audio_features + lyrics_features
-            results = np.concatenate([audio_features, lyrics_features], axis=1)
-            batch_size = results.shape[0]
+        ##Uncomment to check output
+        #print(f"All_lyrics_features[0]: {all_lyrics_features[0]}, shape: {all_lyrics_features[0].shape}")
+        #print(f"All_audio_features[0]: {all_audio_features[0]}, shape: {all_audio_features[0].shape}")
 
-            X[start_idx:start_idx + batch_size, :] = results
-            start_idx += batch_size
+        for i in range(0, len(all_lyrics_features)):
+            all_lyrics_features[i] = pca_trainer.process_batch(all_lyrics_features[i])
 
-            # Delete stored instance for next batch to remove overhead
-            del audio, lyrics, audio_features
+        pca_trainer.save_final("/content/drive/MyDrive/data/processed/pca_model.pkl") #Change path as needed
+
+        ##Uncomment to check output (PCA)
+        #print(f"Reduced All_lyrics_features[0]: {all_lyrics_features[0]}, shape: {all_lyrics_features[0].shape}")
+
+        # Concatenate audio features and reduced lyrics features
+        X = np.concatenate([all_audio_features, all_lyrics_features], axis=-1)
+        X = X.reshape(-1, X.shape[-1])
+        print(f"Final features shape: {X.shape}")
+
+        
 
         # Convert label list into np.array
         Y = np.array(Y)

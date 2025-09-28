@@ -75,6 +75,6 @@ def predict_pipeline(audio, lyrics: str):
 
 if __name__ == "__main__":
     # Example usage (replace with real inputs, place song inside data/raw.)
-    audio = "song_name (without extension)"
+    audio = "multo"
     lyrics = "Some lyrics text here"
     print(predict_pipeline(audio, lyrics))

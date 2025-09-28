@@ -39,9 +39,9 @@ def evaluate_model(model_path: str = "models/fusion/mlp_multimodal.pth"):
     logger.info(f"Loaded dataset: {X.shape}, Labels: {len(Y)}")
     
     # Split data (same as training)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, Y, test_size=0.2, random_state=42, stratify=Y
-    )
+    from src.utils.dataset import dataset_scaler
+    data = dataset_scaler(X, Y)
+    X_test, y_test = data["test"]
     
     logger.info(f"Test set size: {X_test.shape}")
     

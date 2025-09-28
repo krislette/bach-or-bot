@@ -15,7 +15,7 @@ Quick Start:
 # 1. Load settings from config file
 config = load_config("config/model_config.yml")
 
-# 2. Combine your LLM2Vec and Spectra features
+# 2. Combine LLM2Vec and Spectra features
 combined_features = np.concatenate([llm2vec_features, spectra_features], axis=1)
 
 # 3. Create classifier
@@ -61,25 +61,22 @@ class MLPModel(nn.Module):
     """
     The actual neural network that does the AI vs Human classification.
 
-    Think of this as a series of "decision layers" that process your music features
-    and gradually learn to distinguish between AI and human compositions.
-
     What happens inside:
-    1. Takes your combined LLM2Vec + Spectra features
+    1. Takes the combined LLM2Vec + Spectra features
     2. Passes them through multiple hidden layers (each layer learns different patterns)
     3. Each layer applies: processing → normalization → activation → dropout
     4. Final layer outputs a probability (0-1) where closer to 1 = "more human-like"
 
     Args:
-        input_dim (int): How many features you have total (LLM2Vec size + Spectra size)
-        config (Dict): Settings from your YAML file that specify:
+        input_dim (int): How many features we have total (LLM2Vec size + Spectra size)
+        config (Dict): Settings from the YAML file that specify:
             - "hidden_layers": How many neurons in each layer [128, 64, 32]
             - "dropout": How much to randomly "forget" to prevent overfitting [0.3, 0.5, 0.2]
     """
     
     def __init__(self, input_dim: int, config: Dict):
         """
-        Build the neural network architecture based on your config file.
+        Build the neural network architecture based on our config file.
         """
         super(MLPModel, self).__init__()
         
@@ -125,7 +122,7 @@ class MLPModel(nn.Module):
         """
         Set up the starting weights for training.
         
-        Uses Xavier initialization - a smart way to set initial weights
+        Uses Xavier initialization - a way to set initial weights
         so the network trains better from the start.
         """
         for layer in self.network:
@@ -136,11 +133,9 @@ class MLPModel(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Process input features through the network to get predictions.
-
-        This is what happens when you feed music features into the model.
         
         Args:
-            x: Your combined music features (LLM2Vec + Spectra)
+            x: Our combined music features (LLM2Vec + Spectra)
 
         Returns:
             Probability that the music is human-composed (0 to 1)
@@ -171,7 +166,6 @@ class MLPClassifier:
     The complete music classifier system that wraps everything together.
 
     This handles all the training, testing, and prediction logic.
-    Think of it as your main interface for working with the AI vs Human detector.
 
     What it manages:
     - The neural network model
@@ -186,7 +180,7 @@ class MLPClassifier:
 
         Args:
             input_dim (int): Total number of features (LLM2Vec + Spectra combined)
-            config (Dict): All your settings from the YAML config file
+            config (Dict): All our settings from the YAML config file
 
         This creates:
         - The neural network
@@ -226,9 +220,7 @@ class MLPClassifier:
     
     def _create_data_loader(self, X: np.ndarray, y: np.ndarray, shuffle: bool = True) -> DataLoader:
         """
-        Convert your numpy arrays into batches that PyTorch can process.
-        
-        Think of this as chopping your dataset into smaller chunks for training.
+        Convert the numpy arrays into batches that PyTorch can process.
         """
         X_tensor = torch.FloatTensor(X)
         y_tensor = torch.FloatTensor(y).unsqueeze(1)
@@ -240,7 +232,7 @@ class MLPClassifier:
         """
         Train the model to recognize AI vs Human music patterns.
 
-        This is where the magic happens! The model learns by:
+        The model learns by:
         1. Looking at training examples (music + labels)
         2. Making predictions
         3. Seeing how wrong it was
@@ -260,7 +252,7 @@ class MLPClassifier:
         - Early stopping: stops training if validation performance gets worse
         - Learning rate scheduling: slows down learning if we get stuck
         - Gradient clipping: prevents training from going crazy
-        - Progress bars: so you can see what's happening
+        - Progress bars: so we can see what's happening. imported tqdm for this LMAO
         """
         logger.info("Starting MLP training...")
         
@@ -397,7 +389,7 @@ class MLPClassifier:
         Use the trained model to classify new music as AI-generated or human-composed.
 
         Args:
-            X: Music features (LLM2Vec + Spectra combined) for songs you want to classify
+            X: Music features (LLM2Vec + Spectra combined) for songs we want to classify
 
         Returns:
             probabilities: How confident the model is (0.0 to 1.0, higher = more human-like)
@@ -433,7 +425,6 @@ class MLPClassifier:
         Predict whether a single song is AI-generated or human-composed.
         
         This method is optimized for predicting one song at a time.
-        Perfect for real-time applications or when you just want to test one song.
         
         Args:
             features: Music features for ONE song (LLM2Vec + Spectra combined)
@@ -446,7 +437,7 @@ class MLPClassifier:
             
         Example:
             # For a single song
-            single_song_features = np.array([0.1, 0.5, 0.3, ...])  # Your combined features
+            single_song_features = np.array([0.1, 0.5, 0.3, ...]) 
             prob, pred, label = classifier.predict_single(single_song_features)
             
             print(f"Prediction: {label}")
@@ -481,8 +472,7 @@ class MLPClassifier:
         Predict AI vs Human classification for multiple songs at once.
         
         This method is optimized for batch processing - much faster than calling
-        predict_single() multiple times. Great for evaluating datasets or 
-        processing many songs efficiently.
+        predict_single() multiple times.
         
         Args:
             features: Music features for MULTIPLE songs (LLM2Vec + Spectra combined)
@@ -499,7 +489,7 @@ class MLPClassifier:
             
         Example:
             # For multiple songs
-            batch_features = np.array([[0.1, 0.5, 0.3, ...],    # Song 1
+            batch_features = np.array([[0.1, 0.5, 0.3, ...], # Song 1
                                     [0.2, 0.4, 0.7, ...],    # Song 2  
                                     [0.3, 0.6, 0.1, ...]])   # Song 3
                                     
@@ -599,7 +589,7 @@ class MLPClassifier:
         """
         Get detailed performance metrics on test data.
 
-        This gives you the final report card for your model:
+        This gives us the final report card for our model:
         - How accurate is it overall?
         - How well does it detect AI-generated music?
         - How well does it detect human-composed music?
@@ -636,10 +626,10 @@ class MLPClassifier:
     
     def save_model(self, filepath: str) -> None:
         """
-        Save your trained model so you can use it later.
+        Save our trained model so we can use it later.
 
         Args:
-            filepath: Where to save the model (e.g., "models/my_classifier.pth")
+            filepath: Where to save the model
         
         Saves everything needed to reload the model:
         - The learned weights
@@ -660,7 +650,7 @@ class MLPClassifier:
         Load a previously trained model.
 
         Args:
-            filepath: Path to your saved model file
+            filepath: Path to our saved model file
             
         After this, you can immediately use predict() and evaluate()
         without needing to train again.
@@ -674,9 +664,9 @@ class MLPClassifier:
     
     def get_model_summary(self) -> None:
         """
-        Print out details about your model architecture.
+        Print out details about our model architecture.
         
-        Useful for debugging or understanding what you've built.
+        Useful for debugging or understanding what we've built.
         Shows the network structure and how many parameters it has.
         """
         logger.info("Model Architecture:")
@@ -690,8 +680,8 @@ def build_mlp(input_dim: int, config: Dict) -> MLPClassifier:
     Quick way to create an MLP classifier.
     
     Args:
-        input_dim: Size of your combined features (LLM2Vec + Spectra)
-        config: Your model settings from the YAML file
+        input_dim: Size of our combined features (LLM2Vec + Spectra)
+        config: Our model settings from the YAML file
         
     Returns:
         Ready-to-use MLPClassifier instance
@@ -701,13 +691,13 @@ def build_mlp(input_dim: int, config: Dict) -> MLPClassifier:
 
 def load_config(config_path: str = "config/model_config.yml") -> Dict:
     """
-    Load your model settings from the YAML configuration file.
+    Load our model settings from the YAML configuration file.
 
     Args:
-        config_path: Path to your config file
+        config_path: Path to our config file
 
     Returns:
-        Dictionary with all your MLP settings (hidden layers, dropout, etc.)
+        Dictionary with all our MLP settings (hidden layers, dropout, etc.)
     """
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)

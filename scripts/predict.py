@@ -54,11 +54,11 @@ def predict_pipeline(audio, lyrics: str):
 
     # Load trained weights (make sure this path matches where you saved your model)
     model_path = "models/mlp.pth"
-    classifier.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
+    classifier.load_model(model_path)
     classifier.eval()
 
     # Run prediction
-    prediction = classifier.predict_single(results)
+    probability, prediction, label = classifier.predict_single(results)
 
     return {
         "label": int(prediction),

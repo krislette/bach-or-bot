@@ -102,8 +102,7 @@ def train_pipeline():
 
         start_idx = 0
         for batch in batches:
-            audio, lyrics = None, None  # Gets rid of previous values consuming current memory
-            
+
             print(f"Bulk Preprocessing batch {batch_count}...")
             audio, lyrics = bulk_preprocessing(batch, batch_count)
             batch_count += 1
@@ -121,6 +120,9 @@ def train_pipeline():
 
             X[start_idx:start_idx + batch_size, :] = results
             start_idx += batch_size
+
+            # Delete stored instance for next batch to remove overhead
+            del audio, lyrics, audio_features
 
         # Convert label list into np.array
         Y = np.array(Y)

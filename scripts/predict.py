@@ -44,10 +44,10 @@ def predict_pipeline(audio, lyrics: str):
 
     # Call the train method for both models
     audio_features = spectttra_predict(audio)
-    lyrics_features = l2vec_single_train(llm2vec_model, [lyrics])
+    lyrics_features = l2vec_single_train(llm2vec_model, lyrics)
 
     # Scale the vectors using Z-Score
-    audio_features, lyrics_features = instance_scaler([audio_features], lyrics_features)
+    audio_features, lyrics_features = instance_scaler(audio_features, lyrics_features)
 
     # Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)

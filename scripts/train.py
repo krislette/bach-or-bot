@@ -63,6 +63,7 @@ def train_mlp_model(data : dict):
     
     return mlp_classifier
 
+
 def train_pipeline():
     """
     Training script which includes preprocessing, feature extraction, and training the MLP model.
@@ -102,7 +103,6 @@ def train_pipeline():
         lyric_vectors = np.zeros((len(Y), 4096), dtype=np.float32)
 
         start_idx = 0
-        start_idx = 0
         for batch in batches:
 
             print(f"Bulk Preprocessing batch {batch_count}...")
@@ -125,8 +125,6 @@ def train_pipeline():
         
             # Delete stored instance for next batch to remove overhead
             del audio, lyrics, audio_features, lyrics_features
-
-            break
 
         # Run standard scaling on audio and lyrics separately
         audio_vectors, lyric_vectors = dataset_scaler(audio_vectors, lyric_vectors)
@@ -151,8 +149,9 @@ def train_pipeline():
     # Do data splitting
     data = dataset_splitter(X, Y)
 
-    print("Starting MLP training...")
+    print("\nStarting MLP training...")
     train_mlp_model(data)
+
 
 if __name__ == "__main__":
     train_pipeline()

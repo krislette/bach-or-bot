@@ -336,6 +336,7 @@ class MLPClassifier:
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 patience_counter = 0
+                self.is_trained = True
                 # Save the best version
                 self.save_model("models/mlp/mlp_best.pth")
             else:
@@ -661,6 +662,9 @@ class MLPClassifier:
         self.config = checkpoint['config']
         self.is_trained = checkpoint.get('is_trained', True)
         logger.info(f"Model loaded from {filepath}")
+
+        # Temporary override, while waiting for bigger dataset and for model to be trained at that
+        self.is_trained = True
     
     def get_model_summary(self) -> None:
         """

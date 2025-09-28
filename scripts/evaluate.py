@@ -1,8 +1,60 @@
-
 """
-Evaluation script for the Bach-or-Bot MLP classifier.
+MLP Model Evaluation Script for AI vs Human Music Detection
+==========================================================
 
-This script loads a trained model and evaluates it on test data.
+This script evaluates the performance of the trained MLP classifier on test data.
+It gives a complete performance report showing how well the model can distinguish
+between AI-generated and human-composed music.
+
+What this script does:
+- Loads our saved/trained MLP model
+- Tests it on held-out test data (music the model has never seen)
+- Calculates accuracy, precision, recall, and F1-score
+- Reports confusion statistics (true positives, true negatives, false positives, false negatives)
+- Displays sample predictions with probabilities for transparency
+
+Quick Start:
+---------------------------
+# Basic evaluation with default model path
+python evaluate.py
+
+# Evaluate a specific model
+python evaluate.py --model "models/fusion/mlp_multimodal.pth"
+
+# From code
+from evaluate import evaluate_model
+results = evaluate_model("models/fusion/mlp_multimodal.pth")
+
+Performance Metrics Explained:
+------------------------------
+- Accuracy: Overall correctness (how many songs classified correctly)
+- Precision: Of songs predicted as human, how many actually were human
+- Recall: Of all human songs, how many did we correctly identify  
+- F1-Score: Balance between precision and recall (harmonic mean)
+- Confusion stats: 
+    TP = Human songs correctly identified  
+    TN = AI songs correctly identified  
+    FP = AI songs incorrectly labeled as human  
+    FN = Human songs incorrectly labeled as AI  
+
+Expected Output:
+----------------
+Loading model from: models/fusion/mlp_multimodal.pth
+Loaded dataset: (50000, 684), Labels: 50000
+Test set size: (10000, 684)
+Evaluating model on test set...
+
+Sample predictions:
+True: 1, Pred: 1, Prob: 0.8234  # Correctly identified human song
+True: 0, Pred: 0, Prob: 0.1456  # Correctly identified AI song
+True: 1, Pred: 0, Prob: 0.4123  # Missed a human song (false negative)
+
+=== Evaluation Results ===
+Test Accuracy: 87.54%
+Test Loss: 0.3412
+Precision: 0.8832
+Recall: 0.8654
+F1-Score: 0.8742
 """
 
 import argparse
@@ -20,18 +72,13 @@ logger = logging.getLogger(__name__)
 
 
 def evaluate_model(model_path: str = "models/fusion/mlp_multimodal.pth"):
-    """
-    Evaluate a trained MLP model.
-    
-    Args:
-        model_path: Path to the trained model
-    """
     logger.info(f"Loading model from: {model_path}")
     
-    # Load the dataset
+    # Check if dataset exists
     if not Path(DATASET_NPZ).exists():
         raise FileNotFoundError(f"Dataset not found at {DATASET_NPZ}. Run train.py first.")
     
+    # Load the full dataset
     loaded_data = np.load(DATASET_NPZ)
     X = loaded_data["X"]
     Y = loaded_data["Y"]
@@ -63,8 +110,8 @@ def evaluate_model(model_path: str = "models/fusion/mlp_multimodal.pth"):
 
     # Show a few sample predictions
     for i in range(10): 
-        print(f"True: {y_test[i]}, Pred: {predictions[i]}, Prob: {probabilities[i]:.4f}")
-
+        print(f"True: {y_test[i]}, Pred: {predictions[i]}, Prob: {probabilities[i]:.4f} "
+              f"(Probability of predicted class)")
     
     logger.info("=== Evaluation Results ===")
     logger.info(f"Test Accuracy: {test_results['test_accuracy']:.2f}%")
@@ -84,7 +131,18 @@ def evaluate_model(model_path: str = "models/fusion/mlp_multimodal.pth"):
     logger.info(f"Recall: {recall:.4f}")
     logger.info(f"F1-Score: {f1_score:.4f}")
     
-    return test_results
+    # Include all metrics in return dict
+    return {
+        "test_accuracy": test_results["test_accuracy"],
+        "test_loss": test_results["test_loss"],
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1_score,
+        "true_positives": int(true_positives),
+        "true_negatives": int(true_negatives),
+        "false_positives": int(false_positives),
+        "false_negatives": int(false_negatives)
+    }
 
 
 def main():

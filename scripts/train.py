@@ -91,29 +91,30 @@ def train_pipeline():
         X = loaded_data["X"]
         Y = loaded_data["Y"]
     else:
-        print("Training dataset does not exist. Processing data...")
+        logger.info("Training dataset does not exist. Processing data...")
         # Get batches from dataset and return full Y labels
-        batches, Y = dataset_read(batch_size=250)
+        batches, Y = dataset_read(batch_size=500)
         batch_count = 1
 
         # Instantiate LLM2Vec and PCA model
         llm2vec_model = load_llm2vec_model()
 
+        # Preallocate spaces for both audio and lyric vectors to reduce memory overhead
         audio_vectors = np.zeros((len(Y), 384), dtype=np.float32)
         lyric_vectors = np.zeros((len(Y), 4096), dtype=np.float32)
 
         start_idx = 0
         for batch in batches:
 
-            print(f"Bulk Preprocessing batch {batch_count}...")
+            logger.info(f"Bulk Preprocessing - Batch {batch_count}.")
             audio, lyrics = bulk_preprocessing(batch, batch_count)
             batch_count += 1
 
             # Call the train methods for both SpecTTTra and LLM2Vec
-            print("\nStarting SpecTTTra feature extraction...")
+            logger.info("Starting SpecTTTra feature extraction...")
             audio_features = spectttra_train(audio)
 
-            print("\nStarting LLM2Vec feature extraction...")
+            logger.info("Starting LLM2Vec feature extraction...")
             lyrics_features = l2vec_train(llm2vec_model, lyrics)
 
             batch_size = audio_features.shape[0]
@@ -125,10 +126,14 @@ def train_pipeline():
             # Delete stored instance for next batch to remove overhead
             del audio, lyrics, audio_features, lyrics_features
 
+            break
+
         # Run standard scaling on audio and lyrics separately
+        logger.info("Running standard scaling for audio and lyrics...")
         audio_vectors, lyric_vectors = dataset_scaler(audio_vectors, lyric_vectors)
 
         # Start training the PCA to the collected lyrics features
+        logger.info("PCA Training on lyric vectors...")
         pca = PCA(n_components=256, svd_solver="randomized", random_state=42)
         lyric_vectors = pca.fit_transform(lyric_vectors)
         
@@ -137,18 +142,19 @@ def train_pipeline():
 
         # Concatenate audio features and reduced lyrics features
         X = np.concatenate([audio_vectors, lyric_vectors], axis=1)
-        print(f"Final features shape: {X.shape}")
+        logger.info(f"Audio and Lyrics Concatenated. Final features shape: {X.shape}")
 
         # Convert label list into np.array
         Y = np.array(Y)
 
         # Save both X and Y to an .npz file for easier loading
+        logger.info("Saving dataset for future testing...")
         np.savez(DATASET_NPZ, X=X, Y=Y)
 
     # Do data splitting
     data = dataset_splitter(X, Y)
 
-    print("\nStarting MLP training...")
+    logger.info("Starting MLP training...")
     train_mlp_model(data)
 
 

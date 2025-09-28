@@ -1,8 +1,7 @@
-
 from src.preprocessing.preprocessor import dataset_read, bulk_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.model import load_llm2vec_model
-from src.llm2vectrain.llm2vec_trainer import *
+from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.models.mlp import build_mlp, load_config
 
 from src.utils.config_loader import DATASET_NPZ, PCA_MODEL
@@ -103,10 +102,12 @@ def train_pipeline():
         lyric_vectors = np.zeros((len(Y), 4096), dtype=np.float32)
 
         start_idx = 0
+        start_idx = 0
         for batch in batches:
 
             print(f"Bulk Preprocessing batch {batch_count}...")
             audio, lyrics = bulk_preprocessing(batch, batch_count)
+            batch_count += 1
             batch_count += 1
 
             # Call the train methods for both SpecTTTra and LLM2Vec
@@ -155,4 +156,3 @@ def train_pipeline():
 
 if __name__ == "__main__":
     train_pipeline()
-

@@ -126,8 +126,6 @@ def train_pipeline():
             # Delete stored instance for next batch to remove overhead
             del audio, lyrics, audio_features, lyrics_features
 
-            break
-
         # Run standard scaling on audio and lyrics separately
         logger.info("Running standard scaling for audio and lyrics...")
         audio_vectors, lyric_vectors = dataset_scaler(audio_vectors, lyric_vectors)

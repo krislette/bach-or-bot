@@ -47,7 +47,7 @@ def train_mlp_model(data : dict):
     
     # Load best model and evaluate on test set
     try:
-        mlp_classifier.load_model("models/fusion/mlp_best.pth")
+        mlp_classifier.load_model("models/mlp/mlp_best.pth")
         logger.info("Loaded best model for final evaluation")
     except FileNotFoundError:
         logger.warning("Best model not found, using current model")

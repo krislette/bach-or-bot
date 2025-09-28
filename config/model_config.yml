@@ -1,0 +1,11 @@
+mlp:
+  hidden_layers: [1024, 512, 256, 128, 64, 32] # 6 hidden layers
+  dropout: [0.4, 0.3, 0.5, 0.5, 0.5] # Dropout rates for each layer
+  learning_rate: 0.0001 # Adam optimizer
+  batch_size: 128 # Number of samples processed together
+  epochs: 200 # Maximum training iterations
+  patience: 5 # Early stopping patience
+
+  weight_decay: 0.1 # L2 regularization
+  gradient_clipping: 0.5 # Prevent exploding gradients
+  mixup_alpha: 0.2 # For data augmentation during trainign, 0 disables MixUp

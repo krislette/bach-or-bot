@@ -1,7 +1,7 @@
 from llm2vec import LLM2Vec
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 from peft import PeftModel
-from llm2vectrain.access_token import access_token
+from src.llm2vectrain.access_token import access_token
 import torch
 
 

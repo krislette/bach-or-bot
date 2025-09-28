@@ -108,7 +108,6 @@ def train_pipeline():
             print(f"Bulk Preprocessing batch {batch_count}...")
             audio, lyrics = bulk_preprocessing(batch, batch_count)
             batch_count += 1
-            batch_count += 1
 
             # Call the train methods for both SpecTTTra and LLM2Vec
             print("\nStarting SpecTTTra feature extraction...")

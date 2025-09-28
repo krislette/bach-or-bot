@@ -109,7 +109,7 @@ def instance_scaler(audio: np.ndarray, lyrics: np.ndarray):
     audio_scaler = joblib.load("models/fusion/audio_scaler.pkl")
     lyric_scaler = joblib.load("models/fusion/lyric_scaler.pkl")
 
-    scaled_audio = audio_scaler.transform(audio)
+    scaled_audio = audio_scaler.transform([audio])
     scaled_lyrics = lyric_scaler.transform(lyrics)
 
     return scaled_audio, scaled_lyrics

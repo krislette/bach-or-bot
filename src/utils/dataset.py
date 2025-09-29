@@ -9,13 +9,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def dataset_scaler(X: np.ndarray, Y: np.ndarray):
+def dataset_splitter(X: np.ndarray, Y: np.ndarray):
     """
-    Method to scale both audio and lyric vectors using Z-Score.
-    This allows us to have both vectors with a mean of 0, and ranges up and down based on the
-    standard deviation without compromising the information it contains.
-
-    This also saves the scalers through joblib, which will be loaded in the predict script.
+    Script that splits the X and Y values to train, test, and valid splits.
 
     Parameters
     ----------
@@ -44,31 +40,76 @@ def dataset_scaler(X: np.ndarray, Y: np.ndarray):
     
     logger.info(f"Train: {X_train.shape}, Validation: {X_val.shape}, Test: {X_test.shape}")
 
-    # Split train, test and validate into the audio and lyrical segments
-    X_train_audio, X_train_lyrics = X_train[:, :384], X_train[:, 384:]
-    X_val_audio,   X_val_lyrics   = X_val[:, :384],   X_val[:, 384:]
-    X_test_audio,  X_test_lyrics  = X_test[:, :384],  X_test[:, 384:]
+    data = {
+        "train": (X_train, y_train),
+        "val": (X_val, y_val),
+        "test": (X_test, y_test),
+    }
+
+    return data
+
+
+def dataset_scaler(audio: np.ndarray, lyrics: np.ndarray):
+    """
+    Method to scale both audio and lyric vectors using Z-Score.
+    This allows us to have both vectors with a mean of 0, and ranges up and down based on the
+    standard deviation without compromising the information it contains.
+
+    This also saves the scalers through joblib, which will be loaded in the predict script.
+
+    Parameters
+    ----------
+    audio : np.array
+        Array of audio features
+    lyrics : np.array
+        Array of lyric features
+
+    Returns
+    -------
+    scaled_audio : np.array
+        Array of scaled audio features
+    scaled_lyrics : np.array
+        Array of scaled lyric features
+    """
 
     # Apply scalers to have similar-ranged data for both audio and lyrics training values
-    audio_scaler = StandardScaler().fit(X_train_audio)
-    lyric_scaler = StandardScaler().fit(X_train_lyrics)
+    audio_scaler = StandardScaler().fit(audio)
+    lyric_scaler = StandardScaler().fit(lyrics)
 
-    # Transform all splits based on the trained scaler
-    X_train_scaled = np.concatenate([audio_scaler.transform(X_train_audio),
-                                 lyric_scaler.transform(X_train_lyrics)], axis=1)
-    X_val_scaled   = np.concatenate([audio_scaler.transform(X_val_audio),
-                                    lyric_scaler.transform(X_val_lyrics)], axis=1)
-    X_test_scaled  = np.concatenate([audio_scaler.transform(X_test_audio),
-                                    lyric_scaler.transform(X_test_lyrics)], axis=1)
-    
+    scaled_audio = audio_scaler.transform(audio)
+    scaled_lyrics = lyric_scaler.transform(lyrics)
+
     # Save the trained scalers for prediction
     joblib.dump(audio_scaler, "models/fusion/audio_scaler.pkl")
     joblib.dump(lyric_scaler, "models/fusion/lyric_scaler.pkl")
 
-    data = {
-        "train": (X_train_scaled, y_train),
-        "val": (X_val_scaled, y_val),
-        "test": (X_test_scaled, y_test),
-    }
+    return scaled_audio, scaled_lyrics
 
-    return data
+
+def instance_scaler(audio: np.ndarray, lyrics: np.ndarray):
+    """
+    Method to scale the single input audio and lyrics
+
+    Parameters
+    ----------
+    audio : np.array
+        Instance of an audio feature
+    lyrics : np.array
+        Instance of a lyric feature
+
+    Returns
+    -------
+    scaled_audio : np.array
+        Array of scaled audio feature
+    scaled_lyrics : np.array
+        Array of scaled lyric feature
+    """
+
+    # Apply scalers to the single inputs
+    audio_scaler = joblib.load("models/fusion/audio_scaler.pkl")
+    lyric_scaler = joblib.load("models/fusion/lyric_scaler.pkl")
+
+    scaled_audio = audio_scaler.transform([audio])
+    scaled_lyrics = lyric_scaler.transform(lyrics)
+
+    return scaled_audio, scaled_lyrics

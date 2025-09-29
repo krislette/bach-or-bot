@@ -6,7 +6,7 @@ from src.models.mlp import build_mlp, load_config
 
 from src.utils.config_loader import DATASET_NPZ, PCA_MODEL
 from src.utils.dataset import dataset_scaler, dataset_splitter
-from sklearn.decomposition import PCA
+from sklearn.decomposition import IncrementalPCA
 
 from pathlib import Path
 import numpy as np
@@ -130,13 +130,22 @@ def train_pipeline():
         logger.info("Running standard scaling for audio and lyrics...")
         audio_vectors, lyric_vectors = dataset_scaler(audio_vectors, lyric_vectors)
 
-        # Start training the PCA to the collected lyrics features
-        logger.info("PCA Training on lyric vectors...")
-        pca = PCA(n_components=256, svd_solver="randomized", random_state=42)
-        lyric_vectors = pca.fit_transform(lyric_vectors)
-        
-        # Save the trained PCA model
-        joblib.dump(pca, "models/fusion/pca.pkl")
+        # Run PCA per batch to reduce GPU overhead
+        ipca = IncrementalPCA(n_components=256)
+        batch_size = 1000  # Adjust depending on memory
+
+        # Fit IPCA in batches
+        for i in range(0, lyric_vectors.shape[0], batch_size):
+            ipca.partial_fit(lyric_vectors[i:i + batch_size])
+
+        # Transform in batches
+        lyric_vectors_reduced = np.zeros((lyric_vectors.shape[0], 256), dtype=np.float32)
+        for i in range(0, lyric_vectors.shape[0], batch_size):
+            lyric_vectors_reduced[i:i + batch_size, :] = ipca.transform(lyric_vectors[i:i + batch_size])
+
+        # Save IncrementalPCA model
+        joblib.dump(ipca, "models/fusion/incremental_pca.pkl")
+        lyric_vectors = lyric_vectors_reduced
 
         # Concatenate audio features and reduced lyrics features
         X = np.concatenate([audio_vectors, lyric_vectors], axis=1)

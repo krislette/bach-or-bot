@@ -205,6 +205,7 @@ def spectttra_train(audio_tensors):
 
     batch = []
     for waveform in audio_tensors:
+        waveform = waveform.to(device)
         with torch.no_grad():
             melspec = feat_ext(waveform.float())    # (B, n_mels, n_frames)
 
@@ -215,7 +216,7 @@ def spectttra_train(audio_tensors):
             else:
                 tokens = model(melspec)
                 pooled = tokens.mean(dim=1)
-        
+
         batch.append(pooled.cpu().numpy())
 
     return np.vstack(batch)

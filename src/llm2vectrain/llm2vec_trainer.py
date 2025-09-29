@@ -1,9 +1,12 @@
 from sklearn.decomposition import IncrementalPCA
 from sklearn.preprocessing import StandardScaler
+from pathlib import Path
+
 import numpy as np
 import pickle
 import torch
 import os
+import joblib
 
 # Initialize PCA and StandardScaler globally for training
 _pca_trainer = None
@@ -106,7 +109,7 @@ class SimplePCATrainer:
         print(f"Final model saved to {model_path}. Total variance explained: {np.sum(self.pca.explained_variance_ratio_):.4f}")
 
 ## For Single Input
-def load_pca_model(vectors, model_path="llm2vectrain\pca_model.pkl"):
+def load_pca_model(vectors, model_path="models/fusion/pca.pkl"):
     """
     Load a pre-trained PCA model and transform the input vectors.
 
@@ -119,30 +122,24 @@ def load_pca_model(vectors, model_path="llm2vectrain\pca_model.pkl"):
 
     Note: Change the model path as needed in the data_config.yml file (or set the path file as shown above). Can be used for the main program.
     """
-    pca_model = None
-    with open(model_path, 'rb') as f:
-        obj = pickle.load(f)
-        pca_model = obj['pca']
-    output = pca_model.transform(vectors)
-    print(f"Fitted PCA Data: {output.shape}")
-    return output
+    model_path = Path(model_path)
+    pca = joblib.load(model_path)
+    return pca.transform(vectors)
 
 def l2vec_single_train(l2v, lyrics):
     """
-    Encode a single lyric string using the provided LLM2Vec model and reduce its dimensionality using PCA.
+    Encode a single lyric string using the provided LLM2Vec model.
     
     Args:
         l2v: The LLM2Vec model for encoding lyrics.
         lyrics: A single lyric string to encode.
     
     Returns:
-        reduced_vectors: The PCA-reduced vector representation of the lyrics.
+        vectors: The vector representation of the lyrics.
 
-    Note: This function uses the load_pca_model function to apply PCA reduction.
     """
-    vectors = l2v.encode(lyrics)
-    reduced_vectors = load_pca_model(vectors)
-    return reduced_vectors
+    vectors = l2v.encode([lyrics]).detach().cpu().numpy()
+    return vectors
 
 # For Batch Processing
 def l2vec_train(l2v, lyrics_list):

@@ -161,7 +161,7 @@ def spectttra_predict(audio_tensor):
 
     with torch.no_grad():
         # Extract mel-spectrogram
-        melspec = feat_ext(waveform)        # (B, n_mels, n_frames), float32 typically
+        melspec = feat_ext(waveform)        # (B, n_mels, n_frames)
 
         if device.type == "cuda":
             with torch.cuda.amp.autocast(enabled=True):
@@ -183,8 +183,8 @@ def spectttra_train(audio_tensors):
     Args:
         audio_tensors (list[torch.Tensor]):
             List of input waveforms. Each element should be shaped either
-            (num_samples,) or (1, num_samples). All inputs are stacked into
-            a batch internally.
+            (num_samples,) or (1, num_samples). Each waveform is processed
+            independently and its pooled embedding is collected.
 
     Returns:
         np.ndarray:
@@ -199,26 +199,23 @@ def spectttra_train(audio_tensors):
     if not audio_tensors:
         return np.empty((0, _CFG.model.embed_dim))
 
-    batch = []
-    for tensor in audio_tensors:
-        batch.append(tensor)
-
-    # Stack into batch (B, samples)
-    waveform_batch = torch.cat(batch, dim=0).to(_DEVICE).float()
-
     feat_ext = _FEAT_EXT
     model = _MODEL
     device = _DEVICE
 
-    with torch.no_grad():
-        melspec = feat_ext(waveform_batch)  # (B, n_mels, n_frames)
+    batch = []
+    for waveform in audio_tensors:
+        with torch.no_grad():
+            melspec = feat_ext(waveform.float())    # (B, n_mels, n_frames)
 
-        if device.type == "cuda":
-            with torch.cuda.amp.autocast(enabled=True):
-                tokens = model(melspec)     # (B, num_tokens, embed_dim)
-                pooled = tokens.mean(dim=1) # (B, embed_dim)
-        else:
-            tokens = model(melspec)
-            pooled = tokens.mean(dim=1)
+            if device.type == "cuda":
+                with torch.cuda.amp.autocast(enabled=True):
+                    tokens = model(melspec)         # (B, num_tokens, embed_dim)
+                    pooled = tokens.mean(dim=1)     # (B, embed_dim)
+            else:
+                tokens = model(melspec)
+                pooled = tokens.mean(dim=1)
+        
+        batch.append(pooled.cpu().numpy())
 
-    return pooled.cpu().numpy()
+    return np.vstack(batch)

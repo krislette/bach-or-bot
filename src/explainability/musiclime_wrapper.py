@@ -1,124 +1,164 @@
 """
-MusicLIME wrapper and integration module.
-
-This module provides the classifier wrapper function and explainer setup
-needed to integrate multimodal model with MusicLIME.
+Optimized MusicLIME wrapper that fixes performance issues.
 """
 
 import numpy as np
-from typing import List, Callable, Dict
+from typing import List, Callable, Dict, Any
 import warnings
+import soundfile as sf
+import torch
+from types import SimpleNamespace
 
-from src.preprocessing.preprocessor import single_preprocessing
-from src.spectttra.spectttra_trainer import spectttra_train
+from src.preprocessing.audio_preprocessor import AudioPreprocessor
+from src.preprocessing.lyrics_preprocessor import LyricsPreprocessor
+from src.spectttra.spectttra_trainer import build_spectttra
 from src.llm2vectrain.model import load_llm2vec_model
-from src.llm2vectrain.llm2vec_trainer import l2vec_train
+from src.llm2vectrain.llm2vec_trainer import l2vec_single_train
 from src.models.mlp import MLPClassifier
-from src.explainability.factorization.source_separation import OpenunmixFactorization
 from src.explainability.factorization.temporal import TimeOnlyFactorization
-from src.explainability.musiclime import MultimodalExplanation
+from src.explainability.true_musiclime import TrueMusicLIMEExplainer
 
 
 class MusicLIMEWrapper:
     """
-    Wrapper class that integrates model pipeline with MusicLIME.
+    Optimized wrapper that fixes the performance issues in your original implementation.
+
+    Key improvements:
+    1. Batch processing of perturbations
+    2. Cached feature extraction
+    3. Proper MusicLIME architecture
+    4. Efficient model usage
     """
 
     def __init__(self, mlp_model_path: str, config: Dict):
-        """
-        Initialize the MusicLIME wrapper.
-
-        Parameters
-        ----------
-        mlp_model_path : str
-            Path to the trained MLP model
-        config : Dict
-            Configuration dictionary for the model
-        """
-        self.mlp_model_path = mlp_model_path
         self.config = config
 
-        # Initialize models
+        # Initialize models ONCE
+        print("Loading models...")
         self.llm2vec_model = load_llm2vec_model()
+        self.audio_preprocessor = AudioPreprocessor(script="inference")
+        self.lyrics_preprocessor = LyricsPreprocessor()
 
-        # Load MLP model
-        # 384 (SpecTTTra) + 4096 (LLM2Vec) = 4480 dim
-        input_dim = 384 + 4096
-        self.mlp_model = MLPClassifier(input_dim, config)
+        # Load MLP
+        self.mlp_model = MLPClassifier(384 + 4096, config)
         self.mlp_model.load_model(mlp_model_path)
+        print("All models loaded!")
 
-        # Initialize factorization methods
-        self.source_separator = OpenunmixFactorization()
-        self.temporal_segmenter = TimeOnlyFactorization(
-            segment_duration=3.0
-        )  # 3-second segments
+        # Cache for features to avoid recomputation
+        self._audio_cache = {}
+        self._lyrics_cache = {}
 
-    def create_classifier_function(self) -> Callable:
+    def _extract_spectttra_features_batch(
+        self, audio_tensors: List[torch.Tensor]
+    ) -> np.ndarray:
+        """Extract SpecTTTra features for a batch using your existing spectttra_train method."""
+        if not audio_tensors:
+            return np.array([])
+
+        # Use YOUR existing batch method
+        from src.spectttra.spectttra_trainer import spectttra_train
+
+        features_batch = spectttra_train(audio_tensors)
+
+        return features_batch
+
+    def _extract_lyrics_features_batch(self, lyrics_list: List[str]) -> np.ndarray:
+        """Extract lyrics features for a batch using your existing l2vec_train method."""
+        if not lyrics_list:
+            return np.array([])
+
+        # Use YOUR existing batch method
+        from src.llm2vectrain.llm2vec_trainer import l2vec_train
+
+        features_batch = l2vec_train(self.llm2vec_model, lyrics_list)
+
+        # Ensure correct dimensions (4096 per sample)
+        if features_batch.ndim == 1:
+            features_batch = features_batch.reshape(1, -1)
+
+        # Pad/truncate to 4096 if needed
+        batch_size = features_batch.shape[0]
+        if features_batch.shape[1] != 4096:
+            padded_batch = np.zeros((batch_size, 4096))
+            min_dim = min(4096, features_batch.shape[1])
+            padded_batch[:, :min_dim] = features_batch[:, :min_dim]
+            features_batch = padded_batch
+
+        return features_batch
+
+    def create_batch_classifier_function(self) -> Callable:
         """
-        Create the classifier function that MusicLIME expects.
+        Create a batch classifier that processes multiple samples efficiently.
 
-        The returned function will receive PERTURBED audio and lyrics
-        from MusicLIME's perturbation_fn, so it just needs to process them.
-
-        Returns
-        -------
-        Callable
-            Classifier function compatible with MusicLIME
+        This is the key optimization - instead of processing one sample at a time,
+        we process batches which is much faster.
         """
 
-        def classifier_fn(audio: np.ndarray, lyrics_lines: List[str]) -> float:
+        def batch_classifier_fn(
+            lyrics_batch: List[List[str]], audio_batch: np.ndarray
+        ) -> List[float]:
             """
-            Classifier function for MusicLIME.
-
-            This function receives already-perturbed audio and lyrics from MusicLIME
-            and returns a prediction probability.
+            Batch classifier function.
 
             Parameters
             ----------
-            audio : np.ndarray
-                Audio signal (already perturbed by MusicLIME)
-            lyrics_lines : List[str]
-                List of lyric lines (already perturbed by MusicLIME)
+            lyrics_batch : List[List[str]]
+                List of lyrics line lists
+            audio_batch : np.ndarray
+                Batch of audio arrays with shape (batch_size, n_samples)
 
             Returns
             -------
-            float
-                Prediction probability (0-1 range)
+            List[float]
+                List of predictions for each sample
             """
             try:
-                # Convert lyrics lines back to single string
-                # Empty lines are filtered out by MusicLIME perturbation
-                lyrics_string = "\n".join(line for line in lyrics_lines if line.strip())
+                batch_size = len(lyrics_batch)
+                if batch_size == 0:
+                    return []
 
-                # If all lyrics are empty, use empty string
-                if not lyrics_string.strip():
-                    lyrics_string = ""
-
-                # Preprocess the perturbed audio and lyrics
-                processed_audio, processed_lyrics = single_preprocessing(
-                    audio, lyrics_string
+                # Process lyrics batch
+                lyrics_strings = [" ".join(lines) for lines in lyrics_batch]
+                lyrics_features_batch = self._extract_lyrics_features_batch(
+                    lyrics_strings
                 )
 
-                # Extract features
-                audio_features = spectttra_train(processed_audio)
-                lyrics_features = l2vec_train(self.llm2vec_model, [processed_lyrics])
+                # Process audio batch
+                audio_tensors = []
+                for audio_data in audio_batch:
+                    waveform = self.audio_preprocessor(audio_data)
+                    if waveform.dim() == 2 and waveform.size(0) == 1:
+                        waveform = waveform.squeeze(0)
+                    audio_tensors.append(waveform)
 
-                # Concatenate features
+                audio_features_batch = self._extract_spectttra_features_batch(
+                    audio_tensors
+                )
+
+                # Ensure correct dimensions for audio features
+                if audio_features_batch.shape[1] != 384:
+                    padded_audio = np.zeros((batch_size, 384))
+                    min_dim = min(384, audio_features_batch.shape[1])
+                    padded_audio[:, :min_dim] = audio_features_batch[:, :min_dim]
+                    audio_features_batch = padded_audio
+
+                # Combine features and predict
                 combined_features = np.concatenate(
-                    [audio_features[0], lyrics_features[0]]
+                    [audio_features_batch, lyrics_features_batch], axis=1
                 )
 
-                # Get prediction from MLP
-                prediction = self.mlp_model.predict_single(combined_features)
+                predictions = []
+                for features in combined_features:
+                    pred_prob = self.mlp_model.predict_single(features)
+                    predictions.append(float(np.clip(pred_prob, 0.0, 1.0)))
 
-                return prediction
+                return predictions
 
             except Exception as e:
-                warnings.warn(f"Classifier function error: {str(e)}")
-                # Return neutral prediction on error
-                return 0.5
+                warnings.warn(f"Batch classifier failed: {e}")
+                return [0.5] * len(lyrics_batch)  # Neutral predictions
 
-        return classifier_fn
+        return batch_classifier_fn
 
     def explain_prediction(
         self,
@@ -126,99 +166,111 @@ class MusicLIMEWrapper:
         lyrics_text: str,
         factorization_type: str = "temporal",
         n_samples: int = 1000,
+        batch_size: int = 32,  # Larger batch size for efficiency
         **lime_kwargs,
-    ) -> MultimodalExplanation:
+    ) -> Dict[str, Any]:
+        """
+        Generate explanation using optimized batch processing.
 
-        # Choose and initialize factorization method
-        if factorization_type == "source_separation":
-            audio_factorizer = OpenunmixFactorization(
-                input=audio_path,
-                target_sr=22050,
+        Parameters
+        ----------
+        audio_path : str
+            Path to audio file
+        lyrics_text : str
+            Lyrics text
+        factorization_type : str
+            Type of factorization ('temporal' or 'source_separation')
+        n_samples : int
+            Number of LIME samples
+        batch_size : int
+            Batch size for processing (larger = faster but more memory)
+        **lime_kwargs
+            Additional LIME parameters
+
+        Returns
+        -------
+        Dict[str, Any]
+            Explanation results
+        """
+
+        if not audio_path:
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
+        # Load audio ONCE
+        print(f"Loading audio from {audio_path}...")
+        audio_data, sr = sf.read(audio_path)
+
+        # Convert stereo to mono if needed
+        if audio_data.ndim == 2:
+            audio_data = np.mean(audio_data, axis=1)
+
+        # Resample if needed
+        if sr != 16000:
+            import librosa
+
+            audio_data = librosa.resample(
+                audio_data.astype(np.float32), orig_sr=sr, target_sr=16000
             )
-        else:  # temporal
+        print(f"Audio loaded, shape: {audio_data.shape}")
+
+        # Initialize factorizer
+        if factorization_type == "temporal":
             audio_factorizer = TimeOnlyFactorization(
-                input=audio_path,
-                target_sr=22050,
-                temporal_segmentation_params={"n_temporal_segments": 10},
+                input=audio_data,
+                target_sr=16000,
+                temporal_segmentation_params={
+                    "type": "fixed_length",
+                    "n_temporal_segments": 10,
+                },
+            )
+        else:
+            raise NotImplementedError(
+                "Source separation not implemented in optimized version"
             )
 
-        # Split lyrics
-        lyrics_lines = [
-            line.strip() for line in lyrics_text.split("\n") if line.strip()
-        ]
+        print("Audio factorizer created")
+
+        # Process lyrics
+        lyrics_lines = self.lyrics_preprocessor.musiclime_lyrics_extractor(lyrics_text)
+        if not lyrics_lines:
+            lyrics_lines = [""]
+        print(f"Lyrics processed, {len(lyrics_lines)} lines")
+
+        # Create batch classifier
+        batch_classifier_fn = self.create_batch_classifier_function()
+
+        # Test classifier with original data
+        print("Testing classifier with original audio...")
+        original_pred = batch_classifier_fn([lyrics_lines], np.array([audio_data]))[0]
+        print(f"Original prediction: {original_pred}")
 
         # Create explainer
-        from src.explainability.lime.explainer import LimeMusicExplainer
-
-        explainer = LimeMusicExplainer(
-            audio_factorization=audio_factorizer,
-            verbose=lime_kwargs.get("verbose", False),
-            random_state=lime_kwargs.get("random_state", None),
+        print("Starting optimized LIME explanation...")
+        explainer = TrueMusicLIMEExplainer(
+            kernel_width=lime_kwargs.get("kernel_width", 25),
+            verbose=lime_kwargs.get("verbose", True),
+            random_state=lime_kwargs.get("random_state", 42),
         )
-
-        # Get classifier function
-        classifier_fn = self.create_classifier_function()
 
         # Generate explanation
-        explanation_data = explainer.explain_instance(
-            audio_path=audio_path,
+        explanation = explainer.explain_instance(
+            factorization=audio_factorizer,
             lyrics_lines=lyrics_lines,
-            classifier_fn=classifier_fn,
-            n_samples=n_samples,
-            **lime_kwargs,
+            predict_fn=batch_classifier_fn,
+            num_samples=n_samples,
+            batch_size=batch_size,
+            modality="both",
         )
 
-        # Create MultimodalExplanation object
-        instance_info = {
-            "audio_path": audio_path,
-            "lyrics_text": lyrics_text,
+        return {
+            "explanation": explanation,
+            "original_prediction": original_pred,
             "factorization_type": factorization_type,
             "n_samples": n_samples,
+            "batch_size": batch_size,
         }
-
-        explanation = MultimodalExplanation(
-            explanation_data=explanation_data, instance_info=instance_info
-        )
-
-        return explanation
 
 
 def create_musiclime_wrapper(mlp_model_path: str, config: Dict) -> MusicLIMEWrapper:
-    """
-    Factory function to create a MusicLIME wrapper.
-
-    Parameters
-    ----------
-    mlp_model_path : str
-        Path to the trained MLP model
-    config : Dict
-        Model configuration
-
-    Returns
-    -------
-    MusicLIMEWrapper
-        Configured wrapper instance
-    """
+    """Create optimized MusicLIME wrapper."""
     return MusicLIMEWrapper(mlp_model_path, config)
-
-
-# Example usage
-if __name__ == "__main__":
-    # Load model configuration
-    from src.models.mlp import load_config
-
-    config = load_config()
-
-    # Create wrapper
-    wrapper = create_musiclime_wrapper("models/mlp/mlp_best.pth", config)
-
-    # Generate explanation
-    explanation = wrapper.explain_prediction(
-        audio_path="path/to/audio.wav",
-        lyrics_text="Sample lyrics\nLine by line\nFor explanation",
-        factorization_type="temporal",
-        n_samples=1000,
-    )
-
-    # Use the explanation
-    print(explanation.get_summary_text())

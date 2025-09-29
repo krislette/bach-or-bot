@@ -15,7 +15,7 @@ from src.spectttra.spectttra_trainer import build_spectttra
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_single_train
 from src.models.mlp import MLPClassifier
-from src.explainability.factorization.temporal import TimeOnlyFactorization
+from src.explainability.factorization_draft.temporal import TimeOnlyFactorization
 from src.explainability.true_musiclime import TrueMusicLIMEExplainer
 
 

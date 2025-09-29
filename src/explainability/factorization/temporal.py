@@ -26,6 +26,15 @@ class TimeOnlyFactorization(Factorization):
             composition_fn=composition_fn,
         )
 
+        try:
+            # Prefer the readable names returned by the method
+            self._components_names = self.get_component_names()
+        except Exception:
+            # Fallback to generic names if anything goes wrong
+            self._components_names = [
+                f"segment_{i}" for i in range(len(self.temporal_segments))
+            ]
+
         # Now initialize subclass-specific attributes
         self.segment_duration = None
         if (

@@ -86,6 +86,7 @@ Thumbs.db
 data/raw/
 data/processed/
 data/external/
+data/.tmp.driveupload/
 *.csv
 *.tsv
 *.xlsx

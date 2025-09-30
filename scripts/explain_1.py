@@ -11,8 +11,8 @@ def explain():
     predictor = MusicLIMEPredictor()
 
     # Set the path for audio and lyrics [these are samples only - song is Silver Spring]
-    audio_path = Path("data/external/sample.mp3")
-    lyrics_path = Path("data/external/sample.txt")
+    audio_path = Path("data/external/sample_2.mp3")
+    lyrics_path = Path("data/external/sample_2.txt")
 
     # Load the audio as an object + load the lyrics as string
     y, sr = librosa.load(audio_path)
@@ -29,8 +29,18 @@ def explain():
 
     # Print explanations
     results = explanation.get_explanation(label=1, num_features=10)
-    for item in results:
-        print(f"{item['type']}: {item['feature']} (weight: {item['weight']:.3f})")
+    print("\n" + "=" * 80)
+    print("[MusicLIME] Top 10 most important features for the prediction")
+    print("=" * 80)
+
+    for i, item in enumerate(results, 1):
+        print(
+            f"#{i:2d} | {item['type']:6s} | {item['feature'][:50]:50s} | weight: {item['weight']:+.3f}"
+        )
+
+    print("=" * 80)
+    print(f"[MusicLIME] Total features analyzed: {len(results)}")
+    print("[MusicLIME] Higher absolute weights = more important for the prediction")
 
 
 if __name__ == "__main__":

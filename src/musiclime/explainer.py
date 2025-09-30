@@ -4,8 +4,8 @@ from functools import partial
 from sklearn.utils import check_random_state
 from lime.lime_base import LimeBase
 
-from src.explainability.text_utils import LineIndexedString
-from src.explainability.factorization import OpenUnmixFactorization
+from src.musiclime.text_utils import LineIndexedString
+from src.musiclime.factorization import OpenUnmixFactorization
 
 
 class MusicLIMEExplainer:

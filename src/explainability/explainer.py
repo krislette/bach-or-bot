@@ -114,13 +114,49 @@ class MusicLIMEExplainer:
         # Get predictions
         print(f"[MusicLIME] Getting predictions for {len(texts)} samples...")
         predictions = predict_fn(texts, audios)
+
+        # Show the original prediction (first row is always the unperturbed original)
+        original_prediction = predictions[0]
+        predicted_class = np.argmax(original_prediction)  # 0 = AI, 1 = Human
+        confidence = original_prediction[predicted_class]
+
+        # Print original prediction
+        print(f"[MusicLIME] Original Prediction:")
+        print(
+            f"  Raw probabilities: [AI: {original_prediction[0]:.3f}, Human: {original_prediction[1]:.3f}]"
+        )
+        print(
+            f"  Predicted class: {'AI-Generated' if predicted_class == 0 else 'Human-Composed'}"
+        )
+        print(f"  Confidence: {confidence:.3f}")
+
+        # Debug prints
         print(f"[MusicLIME] Predictions shape: {predictions.shape}")
+        print(f"[MusicLIME] Predictions:\n{predictions}")
+        print(f"[MusicLIME] Prediction variance: {np.var(predictions, axis=0)}")
+        print(
+            f"[MusicLIME] Prediction range: min={np.min(predictions, axis=0)}, max={np.max(predictions, axis=0)}"
+        )
+
+        # Check if all predictions are identical
+        if np.allclose(predictions, predictions[0]):
+            print(
+                "[MusicLIME] WARNING: All predictions are identical! LIME cannot learn from this."
+            )
 
         # Calculate distances
         print("[MusicLIME] Calculating distances...")
         distances = sklearn.metrics.pairwise_distances(
             data, data[0].reshape(1, -1), metric="cosine"
         ).ravel()
+
+        # Prints for debugging
+        print(
+            f"[MusicLIME] Distance range: min={np.min(distances)}, max={np.max(distances)}"
+        )
+        print(
+            f"[MusicLIME] Data variance: {np.var(data, axis=0)[:10]}..."
+        )  # First 10 features
 
         return data, predictions, distances
 

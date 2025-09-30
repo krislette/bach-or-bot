@@ -100,11 +100,9 @@ def train_pipeline():
         batches, Y = dataset_read()
         batch_count = 1
 
-        # Instantiate LLM2Vec Model
-        llm2vec_model = load_llm2vec_model()
 
         # Preallocate space for the whole concatenated sequence (50,000 samples)
-        X = np.zeros((len(Y), 684), dtype=np.float32)
+        X = np.zeros((len(Y), 384), dtype=np.float32)
 
         start_idx = 0
         for batch in batches:
@@ -118,14 +116,9 @@ def train_pipeline():
             print(f"\nStarting SpecTTTra feature extraction...")
             audio_features = spectttra_train(audio)
 
-            print(f"\nStarting LLM2Vec feature extractor...")
-            lyrics_features = l2vec_train(llm2vec_model, lyrics)
+            batch_size = audio_features.shape[0]
 
-            # Concatenate the vectors of audio_features + lyrics_features
-            results = np.concatenate([audio_features, lyrics_features], axis=1)
-            batch_size = results.shape[0]
-
-            X[start_idx:start_idx + batch_size, :] = results
+            X[start_idx:start_idx + batch_size, :] = audio_features
             start_idx += batch_size
 
         # Convert label list into np.array

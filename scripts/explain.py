@@ -1,8 +1,8 @@
 import librosa
 from pathlib import Path
 
-from src.explainability.explainer import MusicLIMEExplainer
-from src.explainability.wrapper import MusicLIMEPredictor
+from src.musiclime.explainer import MusicLIMEExplainer
+from src.musiclime.wrapper import MusicLIMEPredictor
 
 
 def explain():

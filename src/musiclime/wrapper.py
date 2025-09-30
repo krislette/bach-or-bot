@@ -2,10 +2,9 @@ import joblib
 import numpy as np
 from src.preprocessing.preprocessor import single_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
-from src.llm2vectrain.llm2vec_trainer import l2vec_train, load_pca_model
+from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.llm2vectrain.model import load_llm2vec_model
 from src.models.mlp import build_mlp, load_config
-from src.utils.dataset import instance_scaler
 
 
 class MusicLIMEPredictor:

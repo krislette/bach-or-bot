@@ -4,7 +4,7 @@ from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.models.mlp import build_mlp, load_config
 
-from src.utils.config_loader import DATASET_NPZ, PCA_MODEL
+from src.utils.config_loader import DATASET_NPZ, RAW_DATASET_NPZ
 from src.utils.dataset import dataset_scaler, dataset_splitter
 from sklearn.decomposition import IncrementalPCA
 
@@ -125,6 +125,10 @@ def train_pipeline():
         
             # Delete stored instance for next batch to remove overhead
             del audio, lyrics, audio_features, lyrics_features
+
+        # Save both X and Y to an .npz file for easier loading
+        logger.info("Saving dataset for future testing...")
+        np.savez(RAW_DATASET_NPZ, audio=audio_vectors, lyrics=lyric_vectors, labels=Y)
 
         # Run standard scaling on audio and lyrics separately
         logger.info("Running standard scaling for audio and lyrics...")

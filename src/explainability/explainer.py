@@ -99,13 +99,13 @@ class MusicLIMEExplainer:
             if i % 100 == 0:
                 print(f"[MusicLIME]     Progress: {i}/{num_samples} samples")
 
-            # Audio perturbation
+            # Audio perturbation & reconstruction
             audio_mask = row[:n_audio]
             active_audio_components = np.where(audio_mask != 0)[0]
             perturbed_audio = audio_fact.compose_model_input(active_audio_components)
             audios.append(perturbed_audio)
 
-            # Text perturbation
+            # Text perturbation & reconstruction
             text_mask = row[n_audio:]
             inactive_lines = np.where(text_mask == 0)[0]
             perturbed_text = text_fact.inverse_removing(inactive_lines)

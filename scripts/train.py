@@ -97,12 +97,15 @@ def train_pipeline():
     else:
         print("Training dataset does not exist. Processing data...")
         # Get batches from dataset and return full Y labels
-        batches, Y = dataset_read()
+        batches, Y = dataset_read(batch_size=25)
         batch_count = 1
 
+        # Instantiate LLM2Vec Model
+        l2v = load_llm2vec_model()
 
-        # Preallocate space for the whole concatenated sequence (50,000 samples)
-        X = np.zeros((len(Y), 384), dtype=np.float32)
+        # Preallocate space for the whole concatenated sequence (20,000 samples)
+        audio_vectors = np.zeros((len(Y), 384), dtype=np.float32)
+        lyric_vectors = np.zeros((len(Y), 4096), dtype=np.float32)
 
         start_idx = 0
         for batch in batches:
@@ -116,16 +119,21 @@ def train_pipeline():
             print(f"\nStarting SpecTTTra feature extraction...")
             audio_features = spectttra_train(audio)
 
+            # Call the train method for LLM2Vec
+            print(f"\nStarting LLM2Vec feature extraction...")
+            lyric_features = l2vec_train(l2v, lyrics)
+
             batch_size = audio_features.shape[0]
 
-            X[start_idx:start_idx + batch_size, :] = audio_features
+            audio_vectors[start_idx:start_idx + batch_size, :] = audio_features
+            lyric_vectors[start_idx:start_idx + batch_size, :] = lyric_features
             start_idx += batch_size
 
         # Convert label list into np.array
         Y = np.array(Y)
 
         # Save both X and Y to an .npz file for easier loading
-        np.savez(DATASET_NPZ, X=X, Y=Y)
+        np.savez(DATASET_NPZ, audio=audio_vectors, lyrics=lyric_vectors, Y=Y)
     
     print("Starting MLP training...")
     train_mlp_model(X, Y)

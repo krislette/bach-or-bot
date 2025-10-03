@@ -5,13 +5,12 @@ from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.models.mlp import build_mlp, load_config
 
 from src.utils.config_loader import DATASET_NPZ, RAW_DATASET_NPZ
-from src.utils.dataset import dataset_scaler, dataset_splitter
+from src.utils.dataset import scale_pca, dataset_splitter
 from sklearn.decomposition import IncrementalPCA
 
 from pathlib import Path
 import numpy as np
 import logging
-import joblib
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -126,44 +125,36 @@ def train_pipeline():
             # Delete stored instance for next batch to remove overhead
             del audio, lyrics, audio_features, lyrics_features
 
-        # Save both X and Y to an .npz file for easier loading
-        logger.info("Saving dataset for future testing...")
-        np.savez(RAW_DATASET_NPZ, audio=audio_vectors, lyrics=lyric_vectors, labels=Y)
+        # Save spectttra and llm2vec vectors for raw testing
+        logger.info("Saving raw dataset for future testing...")
+        np.savez(RAW_DATASET_NPZ, audio=audio_vectors, lyrics=lyric_vectors, label=Y)
 
-        # Run standard scaling on audio and lyrics separately
-        logger.info("Running standard scaling for audio and lyrics...")
-        audio_vectors, lyric_vectors = dataset_scaler(audio_vectors, lyric_vectors)
-
-        # Run PCA per batch to reduce GPU overhead
-        ipca = IncrementalPCA(n_components=256)
-        batch_size = 1000  # Adjust depending on memory
-
-        # Fit IPCA in batches
-        for i in range(0, lyric_vectors.shape[0], batch_size):
-            ipca.partial_fit(lyric_vectors[i:i + batch_size])
-
-        # Transform in batches
-        lyric_vectors_reduced = np.zeros((lyric_vectors.shape[0], 256), dtype=np.float32)
-        for i in range(0, lyric_vectors.shape[0], batch_size):
-            lyric_vectors_reduced[i:i + batch_size, :] = ipca.transform(lyric_vectors[i:i + batch_size])
-
-        # Save IncrementalPCA model
-        joblib.dump(ipca, "models/fusion/incremental_pca.pkl")
-        lyric_vectors = lyric_vectors_reduced
-
-        # Concatenate audio features and reduced lyrics features
         X = np.concatenate([audio_vectors, lyric_vectors], axis=1)
-        logger.info(f"Audio and Lyrics Concatenated. Final features shape: {X.shape}")
-
-        # Convert label list into np.array
         Y = np.array(Y)
 
-        # Save both X and Y to an .npz file for easier loading
-        logger.info("Saving dataset for future testing...")
-        np.savez(DATASET_NPZ, X=X, Y=Y)
+        # Run train test valid splitter and return it as a dictionary
+        logger.info("Running standard scaling for audio and lyrics...")
+        data = dataset_splitter(X, Y)
 
-    # Do data splitting
-    data = dataset_splitter(X, Y)
+        # Scale audio and lyrics separately, apply PCA to lyrics
+        data = scale_pca(data)
+
+        # Destructure the dictionary for saving
+        X_train, y_train = data["train"]
+        X_val, y_val     = data["val"]
+        X_test, y_test   = data["test"]
+
+        # Save all splits to an .npz file for easier loading
+        logger.info("Saving dataset for future testing...")
+        np.savez(
+            file=DATASET_NPZ,
+            X_train=X_train,
+            X_val=X_val,
+            X_test=X_test,
+            y_train=y_train,
+            y_val=y_val,
+            y_test=y_test
+        )
 
     logger.info("Starting MLP training...")
     train_mlp_model(data)

@@ -6,4 +6,6 @@ paths:
   raw_dir: "data/raw"
   processed_dir: "data/processed"
   pca_path: "data/processed/pca_model.pkl"
+  audio_scaler: "data/processed/audio_scaler.pkl"
+  lyric_scaler: "data/processed/lyric_scaler.pkl"
   raw_dataset_npz: "data/processed/raw_training_data.npz"

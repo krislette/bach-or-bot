@@ -3,6 +3,7 @@ import librosa
 import io
 import torch
 import random
+import numpy as np
 
 from pathlib import Path
 from torchaudio import functional as AF
@@ -37,7 +38,7 @@ class AudioPreprocessor:
 
     """
 
-    def __init__(self, script="train", waveform_norm="std"):
+    def __init__(self, script="train", waveform_norm="peak"):
         self.SCRIPT = script
         self.INPUT_SAMPLING = 48000
         self.TARGET_SAMPLING = 16000
@@ -48,50 +49,57 @@ class AudioPreprocessor:
 
 
     def load_audio(self, audiofile):
-        """
-        Load an MP3 audio file (disk or bytes) using librosa, 
-        then convert to a torch.Tensor.
-
-        Parameters
-        ----------
-        audiofile : str | bytes | io.BytesIO
-            Path (relative to INPUT_PATH) or in-memory audio bytes.
-
-        Returns
-        -------
-        waveform : torch.Tensor
-            Audio waveform as a tensor of shape (channels, num_samples).
-        sample_rate : int
-            Original sampling rate of the audio.
-        """
         try:
             if isinstance(audiofile, str):
                 if not audiofile.endswith(".mp3"):
                     audiofile = f"{audiofile}.mp3"
                 file = self.INPUT_PATH / audiofile
 
-                y, sr = librosa.load(str(file), sr=None, mono=False)
+                # FIXED: Force librosa to load properly
+                # Load at native sample rate first, then we will resample later
+                y, sr = librosa.load(str(file), sr=None, mono=False, dtype=np.float32)
+                
+                # If loading fails (all zeros), try with explicit sample rate
+                if np.abs(y).max() < 0.0001:
+                    print(f"Warning: First load failed, trying with sr=48000")
+                    y, sr = librosa.load(str(file), sr=48000, mono=False, dtype=np.float32)
+                
+                # Last resort: use soundfile instead
+                if np.abs(y).max() < 0.0001:
+                    print(f"Warning: Librosa failed, trying soundfile")
+                    import soundfile as sf
+                    y, sr = sf.read(str(file), dtype='float32')
+                    if y.ndim == 2:
+                        y = y.T  # soundfile returns (samples, channels)
+                    else:
+                        y = y[None, :]  # make it (1, samples)
 
             elif isinstance(audiofile, (bytes, io.BytesIO)):
                 file = io.BytesIO(audiofile) if isinstance(audiofile, bytes) else audiofile
                 file.seek(0)
-
-                y, sr = librosa.load(file, sr=None, mono=False)
+                y, sr = librosa.load(file, sr=None, mono=False, dtype=np.float32)
 
             else:
                 raise ValueError(f"Unsupported audiofile type: {type(audiofile)}")
 
-            # Ensure consistent shape (channels, num_samples)
-            if y.ndim == 1:  # mono
-                y = y[None, :]  # (1, num_samples)
+            # Verify we actually loaded audio
+            if np.abs(y).max() < 0.0001:
+                raise RuntimeError(f"Audio file appears to be silent or corrupted: {audiofile}")
+
+            # Ensure consistent shape
+            if y.ndim == 1:
+                y = y[None, :]
             else:
-                y = y.T  # librosa returns (num_samples, channels)
+                y = y.T if y.shape[0] > y.shape[1] else y
 
             waveform = torch.from_numpy(y).float()
+            
+            print(f"Successfully loaded: range [{y.min():.6f}, {y.max():.6f}], mean abs: {np.abs(y).mean():.6f}")
+            
             return waveform, sr
 
         except Exception as e:
-            raise RuntimeError(f"Error: File cannot be loaded. Check the filename and type. {e}")
+            raise RuntimeError(f"Error loading audio file: {e}")
 
 
     def resample_audio(self, original_sr, waveform):
@@ -158,7 +166,7 @@ class AudioPreprocessor:
             return waveform
         
     
-    def normalize_waveform(self, waveform, method):
+    def normalize_waveform(self, waveform, method="peak"):
         """
         Normalize audio waveform.
 
@@ -174,7 +182,11 @@ class AudioPreprocessor:
         waveform : tensor
             Normalized audio waveform.
         """
-        if method == "std":
+        if method == "peak":
+            # Normalize to [-1, 1] based on max absolute value to preserves relative dynamics
+            peak = waveform.abs().max()
+            return waveform / max(peak, 1e-6)
+        elif method == "std":
             std = waveform.std()
             return waveform / max(std, 1e-6)
         elif method == "minmax":
@@ -239,7 +251,7 @@ class AudioPreprocessor:
         # Trim if more than 120 seconds, pad if less than
         waveform = self.pad_trim(waveform=waveform, random_crop=train)
 
-        # Normalize waveform (aligned with SONICS)
+        # Normalize waveform (used PEAK)
         waveform = self.normalize_waveform(waveform, method=self.WAVEFORM_NORM)
 
         # Add some gaussian noise to the waveform during training

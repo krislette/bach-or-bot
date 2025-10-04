@@ -1,8 +1,11 @@
+import json
 import numpy as np
 import sklearn.metrics
 from functools import partial
 from sklearn.utils import check_random_state
 from lime.lime_base import LimeBase
+from pathlib import Path
+from datetime import datetime
 
 from src.musiclime.text_utils import LineIndexedString
 from src.musiclime.factorization import OpenUnmixFactorization
@@ -199,3 +202,60 @@ class MusicLIMEExplanation:
                 )
 
         return explanations
+
+    def save_to_json(self, filepath, song_info=None, num_features=10):
+        """Save explanation results to JSON file"""
+        results_dir = Path("results")
+        results_dir.mkdir(exist_ok=True)
+
+        # Get explanation data
+        explanation_data = {}
+        for label in self.local_exp.keys():
+            features = self.get_explanation(label, num_features)
+
+            explanation_data[f"label_{label}"] = {
+                "prediction_label": "Human-Composed" if label == 1 else "AI-Generated",
+                "intercept": float(self.intercept.get(label, 0)),
+                "score": float(self.score.get(label, 0)),
+                "local_prediction": (
+                    float(self.local_pred.get(label, [0])[0])
+                    if self.local_pred.get(label)
+                    else 0
+                ),
+                "top_features": [
+                    {
+                        "rank": i + 1,
+                        "type": item["type"],
+                        "feature": item["feature"],
+                        "weight": float(item["weight"]),
+                    }
+                    for i, item in enumerate(features)
+                ],
+            }
+
+        # Create complete JSON structure
+        json_output = {
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "song_info": song_info or {},
+                "model_info": {
+                    "total_audio_components": self.audio_factorization.get_number_components(),
+                    "total_text_lines": self.text_factorization.num_words(),
+                    "total_features": self.audio_factorization.get_number_components()
+                    + self.text_factorization.num_words(),
+                },
+                "explanation_params": {
+                    "num_samples": len(self.data),
+                    "num_features_shown": num_features,
+                },
+            },
+            "explanations": explanation_data,
+        }
+
+        # Save to results folder
+        output_path = results_dir / filepath
+        with open(output_path, "w") as f:
+            json.dump(json_output, f, indent=2)
+
+        print(f"[MusicLIME] Explanation saved to: {output_path}")
+        return output_path

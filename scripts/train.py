@@ -90,13 +90,14 @@ def train_pipeline():
 
         # Destructure the dictionary for loading
         data = {
-            X_train :   loaded_data["X_train"],
-            y_train :   loaded_data["Y_train"],
-            X_test  :   loaded_data["X_test"],
-            y_test  :   loaded_data["y_test"],
-            X_val   :   loaded_data["X_val"],
-            y_val   :   loaded_data["y_val"]
+            "train": (loaded_data["X_train"], loaded_data["y_train"]),
+            "test":  (loaded_data["X_test"], loaded_data["y_test"]),
+            "val":   (loaded_data["X_val"], loaded_data["y_val"])
         }
+
+        y_train = loaded_data["y_train"]
+        y_test = loaded_data["y_test"]
+        y_val = loaded_data["y_val"]
 
     else:
         logger.info("Training dataset does not exist. Processing data...")
@@ -164,6 +165,11 @@ def train_pipeline():
             y_val=y_val,
             y_test=y_test
         )
+
+    # 1. Class balance
+    print("Training distribution:", np.bincount(y_train))
+    print("Validation distribution:", np.bincount(y_val))
+    print("Test distribution:", np.bincount(y_test))
 
     logger.info("Starting MLP training...")
     train_mlp_model(data)

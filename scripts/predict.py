@@ -4,11 +4,10 @@ from src.spectttra.spectttra_trainer import spectttra_predict
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_single_train, load_pca_model
 from src.models.mlp import build_mlp, load_config
-from pathlib import Path
-from src.utils.config_loader import DATASET_NPZ
 from src.utils.dataset import instance_scaler
 
 import numpy as np
+import pandas as pd
 import torch
 
 def predict_pipeline(audio, lyrics: str):
@@ -32,9 +31,6 @@ def predict_pipeline(audio, lyrics: str):
     label : int
         A numerical representation of the prediction
     """
-
-    # Instantiate X and Y vectors
-    X, Y = None, None
 
     # Instantiate LLM2Vec Model
     llm2vec_model = load_llm2vec_model()
@@ -73,8 +69,16 @@ def predict_pipeline(audio, lyrics: str):
         "prediction": "Fake" if prediction == 0 else "Real"
     }
 
-if __name__ == "__main__":
+if __name__ == "_main_":
     # Example usage (replace with real inputs, place song inside data/raw.)
-    audio = "multo"
-    lyrics = "Some lyrics text here"
-    print(predict_pipeline(audio, lyrics))
+    data = pd.read_csv("data/raw/predict_data.csv")
+
+    result = []
+    label = []
+    for row in data.itertuples():
+        label.append(row.label)
+        result.append(predict_pipeline(row.song, row.lyrics))
+
+    for i in range(len(result)):
+        print(result[i])
+        print(label[i]) 

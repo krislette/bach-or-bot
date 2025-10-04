@@ -73,9 +73,9 @@ def scale_pca(data : dict):
     X_test, y_test   = data["test"]
 
     # Segment the concatenated embedding to audio and lyrics
-    X_train_audio, X_train_lyric = X_train[:384], X_train[384:]
-    X_test_audio, X_test_lyric = X_test[:384], X_test[384:]
-    X_val_audio, X_val_lyric = X_val[:384], X_val[384:]
+    X_train_audio, X_train_lyric = X_train[:, :384], X_train[:, 384:]
+    X_test_audio, X_test_lyric = X_test[:, :384], X_test[:, 384:]
+    X_val_audio, X_val_lyric = X_val[:, :384], X_val[:, 384:]
 
     # Fit the scalers into the train data, return scalers for fitting of test and validation
     audio_scaler, lyric_scaler = dataset_scaler(X_train_audio, X_train_lyric)
@@ -89,16 +89,12 @@ def scale_pca(data : dict):
     X_test_lyric = lyric_scaler.transform(X_test_lyric)
     X_val_lyric = lyric_scaler.transform(X_val_lyric)
 
-    # Concatenate scaled lyrics for PCA fitting
-    scaled_lyrics = np.concatenate([X_train_lyric, X_test_lyric, X_val_lyric])
-
-    # Run PCA per batch to reduce GPU overhead
+    # Fit PCA on TRAINING lyrics only
     ipca = IncrementalPCA(n_components=512)
-    batch_size = 1000  # Adjust depending on memory
+    batch_size = 1000
 
-    # Fit IPCA in batches
-    for i in range(0, scaled_lyrics.shape[0], batch_size):
-        ipca.partial_fit(scaled_lyrics[i:i + batch_size])
+    for i in range(0, X_train_lyric.shape[0], batch_size):
+        ipca.partial_fit(X_train_lyric[i:i + batch_size])
 
     # Transform in batches
     X_train_lyric = ipca.transform(X_train_lyric)
@@ -111,6 +107,43 @@ def scale_pca(data : dict):
     X_val = np.concatenate([X_val_audio, X_val_lyric], axis=1)
 
     joblib.dump(ipca, PCA_MODEL)
+
+    data = {
+        "train": (X_train, y_train),
+        "val": (X_val, y_val),
+        "test": (X_test, y_test),
+    }
+
+    return data
+
+
+def scale(data : dict):
+    """
+    Script that scales the splits, and applies PCA to the lyrics vector.
+
+    Parameters
+    ----------
+    data : dictionary
+        Dictionary containing the splits
+
+    Returns
+    -------
+    data : dict{np.array}
+        A dictionary of np.arrays, containing the train/test/val split.
+    """
+
+    # Destructure the dictionary to get data split
+    X_train, y_train = data["train"]
+    X_val, y_val     = data["val"]
+    X_test, y_test   = data["test"]
+
+    audio_scaler = StandardScaler().fit(X_train)
+    joblib.dump(audio_scaler, AUDIO_SCALER)
+
+    # Transform the rest of the splits using the scalers
+    X_train = audio_scaler.transform(X_train)
+    X_test = audio_scaler.transform(X_test)
+    X_val = audio_scaler.transform(X_val)
 
     data = {
         "train": (X_train, y_train),

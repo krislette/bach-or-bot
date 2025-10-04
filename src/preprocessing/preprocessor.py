@@ -82,26 +82,19 @@ def single_preprocessing(audio, lyric: str):
     return processed_song, processed_lyric
 
 
-def dataset_read(batch_size = 20):
+def dataset_read(batch_size=20):
     """
-    Reads the csv file and returns batches of data
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    data_splits : list
-        List of dataframes acting as batches
-    
-    label : list
-        List of real/fake labels (in the formm of 0 and 1)
+    Reads the csv file and returns batches of data with shuffled order
+    to ensure each batch has mixed real/fake samples.
     """
     dataset = pd.read_csv(DATASET_CSV)
+    
+    # Shuffle the entire dataset before batching
+    dataset = dataset.sample(frac=1, random_state=42).reset_index(drop=True)
+    
     label = dataset['target'].tolist()
-
-    # Split into x batches (50,000 / x)
+    
+    # Split into batches
     data_splits = np.array_split(dataset, batch_size)
-
+    
     return data_splits, label

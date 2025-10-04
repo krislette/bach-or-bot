@@ -1,6 +1,8 @@
+from datetime import datetime
 import librosa
-from pathlib import Path
+import numpy as np
 
+from pathlib import Path
 from src.musiclime.explainer import MusicLIMEExplainer
 from src.musiclime.wrapper import MusicLIMEPredictor
 
@@ -27,10 +29,38 @@ def explain():
         labels=(1,),
     )
 
+    # Get original prediction (first sample is always the orig meaning unperturbed)
+    original_prediction = explanation.predictions[0]
+    predicted_class = np.argmax(original_prediction)
+    confidence = original_prediction[predicted_class]
+
+    # Create song info from the prediction
+    song_info = {
+        "filename": "sample.mp3",
+        "duration": f"{len(y)/44100:.1f}s",
+        "original_prediction": {
+            "class": "Human-Composed" if predicted_class == 1 else "AI-Generated",
+            "confidence": float(confidence),
+            "raw_probabilities": {
+                "AI": float(original_prediction[0]),
+                "Human": float(original_prediction[1]),
+            },
+        },
+    }
+
+    # Save with prediction data
+    explanation.save_to_json(
+        filepath=f"musiclime_explanation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+        song_info=song_info,
+        num_features=10,
+    )
+
     # Print explanations
     results = explanation.get_explanation(label=1, num_features=10)
     print("\n" + "=" * 80)
-    print("[MusicLIME] Top 10 most important features for the prediction")
+    print(
+        f"[MusicLIME] Top 10 most important features for {"Human-Composed" if predicted_class == 1 else "AI-Generated"} prediction"
+    )
     print("=" * 80)
 
     for i, item in enumerate(results, 1):

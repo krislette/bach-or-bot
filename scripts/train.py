@@ -87,8 +87,17 @@ def train_pipeline():
         logger.info("Training dataset already exists. Loading file...")
 
         loaded_data = np.load(DATASET_NPZ)
-        X = loaded_data["X"]
-        Y = loaded_data["Y"]
+
+        # Destructure the dictionary for loading
+        data = {
+            X_train :   loaded_data["X_train"],
+            y_train :   loaded_data["Y_train"],
+            X_test  :   loaded_data["X_test"],
+            y_test  :   loaded_data["y_test"],
+            X_val   :   loaded_data["X_val"],
+            y_val   :   loaded_data["y_val"]
+        }
+
     else:
         logger.info("Training dataset does not exist. Processing data...")
         # Get batches from dataset and return full Y labels

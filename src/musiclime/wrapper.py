@@ -40,43 +40,40 @@ class MusicLIMEPredictor:
             processed_audios.append(processed_audio)
             processed_lyrics.append(processed_lyric)
 
-        # Step 2: BATCH feature extraction
+        # Step 2: Batch feature extraction
         print("[MusicLIME] Extracting audio features (batch)...")
         audio_features_batch = spectttra_train(processed_audios)  # (batch, 384)
 
         print("[MusicLIME] Extracting lyrics features (batch)...")
         lyrics_features_batch = l2vec_train(
             self.llm2vec_model, processed_lyrics
-        )  # (batch, 4096)
+        )  # (batch, 2048)
 
-        # Step 3: Scale and reduce in batch
-        print("[MusicLIME] Scaling and reducing features (batch)...")
+        # Step 3: Apply PCA to lyrics batch first
+        print("[MusicLIME] Applying PCA to lyrics (batch)")
+        pca_model = joblib.load("models/fusion/pca.pkl")
+        reduced_lyrics_batch = pca_model.transform(
+            lyrics_features_batch
+        )  # (batch, 256)
 
-        # Load the trained scalers
+        # Step 4: Scale the reduced features
+        print("[MusicLIME] Scaling features (batch)...")
         audio_scaler = joblib.load("models/fusion/audio_scaler.pkl")
         lyric_scaler = joblib.load("models/fusion/lyric_scaler.pkl")
 
-        # Then apply scaling to the batch
         scaled_audio_batch = audio_scaler.transform(
             audio_features_batch
         )  # (batch, 384)
         scaled_lyrics_batch = lyric_scaler.transform(
-            lyrics_features_batch
-        )  # (batch, 4096)
-
-        # Step 4: Apply PCA to lyrics batch
-        print("[MusicLIME] Applying PCA to lyrics (batch)")
-        pca_model = joblib.load("models/fusion/pca.pkl")
-        reduced_lyrics_batch = pca_model.transform(
-            scaled_lyrics_batch
-        )  # (batch, 256 or however small the scaler makes it to be)
+            reduced_lyrics_batch
+        )  # (batch, 256)
 
         # Step 5: Concatenate features
         combined_features_batch = np.concatenate(
-            [scaled_audio_batch, reduced_lyrics_batch], axis=1
-        )  # (batch, sum of lyrics & audio vector dims)
+            [scaled_audio_batch, scaled_lyrics_batch], axis=1
+        )
 
-        # Step 4: BATCH MLP prediction
+        # Step 6: Batch MLP prediction
         print("[MusicLIME] Running MLP predictions (batch)...")
         if self.classifier is None:
             self.classifier = build_mlp(

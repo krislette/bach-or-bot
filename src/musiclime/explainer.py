@@ -1,6 +1,8 @@
 import json
 import numpy as np
 import sklearn.metrics
+import time
+
 from functools import partial
 from sklearn.utils import check_random_state
 from lime.lime_base import LimeBase
@@ -9,6 +11,7 @@ from datetime import datetime
 
 from src.musiclime.text_utils import LineIndexedString
 from src.musiclime.factorization import OpenUnmixFactorization
+from src.musiclime.print_utils import green_bold
 
 
 class MusicLIMEExplainer:
@@ -46,9 +49,16 @@ class MusicLIMEExplainer:
             f"[MusicLIME] Audio components: {audio_factorization.get_number_components()}"
         )
 
+        start_time = time.time()
         print("[MusicLIME] Processing lyrics...")
         text_factorization = LineIndexedString(lyrics)
         print(f"[MusicLIME] Text lines: {text_factorization.num_words()}")
+        text_processing_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Lyrics processing completed in {text_processing_time:.2f}s"
+            )
+        )
 
         # Generate perturbations and get predictions
         print(f"[MusicLIME] Generating {num_samples} perturbations...")
@@ -56,13 +66,13 @@ class MusicLIMEExplainer:
             audio_factorization, text_factorization, predict_fn, num_samples
         )
 
-        # Create explanation object
+        # LIME fitting, create explanation object
+        start_time = time.time()
         print("[MusicLIME] Fitting LIME model...")
         explanation = MusicLIMEExplanation(
             audio_factorization, text_factorization, data, predictions
         )
 
-        # Fit local model for each label
         for label in labels:
             print(f"[MusicLIME] Explaining label {label}...")
             (
@@ -74,7 +84,12 @@ class MusicLIMEExplainer:
                 data, predictions, distances, label, num_features=20
             )
 
+        lime_time = time.time() - start_time
+        print(
+            green_bold(f"[MusicLIME] LIME model fitting completed in {lime_time:.2f}s")
+        )
         print("[MusicLIME] MusicLIME explanation complete!")
+
         return explanation
 
     def _generate_neighborhood(self, audio_fact, text_fact, predict_fn, num_samples):
@@ -87,13 +102,17 @@ class MusicLIMEExplainer:
         )
 
         # Generate binary masks
+        start_time = time.time()
         print("[MusicLIME] Generating perturbation masks...")
         data = self.random_state.randint(0, 2, num_samples * total_features).reshape(
             (num_samples, total_features)
         )
         data[0, :] = 1  # Original instance
+        mask_time = time.time() - start_time
+        print(green_bold(f"[MusicLIME] Mask generation completed in {mask_time:.2f}s"))
 
         # Generate perturbed instances
+        start_time = time.time()
         texts = []
         audios = []
 
@@ -114,9 +133,17 @@ class MusicLIMEExplainer:
             perturbed_text = text_fact.inverse_removing(inactive_lines)
             texts.append(perturbed_text)
 
+        perturbation_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Perturbation creation completed in {perturbation_time:.2f}s"
+            )
+        )
+
         # Get predictions
         print(f"[MusicLIME] Getting predictions for {len(texts)} samples...")
         predictions = predict_fn(texts, audios)
+        prediction_time = time.time() - start_time
 
         # Show the original prediction (first row is always the unperturbed original)
         original_prediction = predictions[0]

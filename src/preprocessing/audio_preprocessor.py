@@ -121,9 +121,9 @@ class AudioPreprocessor:
             Resampled audio waveform at `TARGET_SAMPLING`.
         """
         if original_sr != self.TARGET_SAMPLING:
-            print(
-                f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}."
-            )
+            # print(
+            #     f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}."
+            # )
             waveform = AF.resample(
                 waveform, orig_freq=original_sr, new_freq=self.TARGET_SAMPLING
             )

@@ -26,7 +26,7 @@ def musiclime(audio_data, lyrics_text):
         audio=audio_data,
         lyrics=lyrics_text,
         predict_fn=predictor,
-        num_samples=5,
+        num_samples=1000,
         labels=(1,),
     )
 

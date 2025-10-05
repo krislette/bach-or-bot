@@ -5,9 +5,18 @@ import numpy as np
 from pathlib import Path
 from src.musiclime.explainer import MusicLIMEExplainer
 from src.musiclime.wrapper import MusicLIMEPredictor
+from src.musiclime.print_utils import green_bold
 
 
 def explain():
+    # Start timing and time stamp to record how long the entire explanation thingy is
+    start_time = datetime.now()
+    print(
+        green_bold(
+            f"[MusicLIME] Started at: {start_time.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+    )
+
     # Create musiclime-related instances
     explainer = MusicLIMEExplainer()
     predictor = MusicLIMEPredictor()
@@ -25,35 +34,13 @@ def explain():
         audio=y,
         lyrics=lyrics_text,
         predict_fn=predictor,
-        num_samples=5,
+        num_samples=1000,
         labels=(1,),
     )
 
     # Get original prediction (first sample is always the orig meaning unperturbed)
     original_prediction = explanation.predictions[0]
     predicted_class = np.argmax(original_prediction)
-    confidence = original_prediction[predicted_class]
-
-    # Create song info from the prediction
-    song_info = {
-        "filename": "sample.mp3",
-        "duration": f"{len(y)/44100:.1f}s",
-        "original_prediction": {
-            "class": "Human-Composed" if predicted_class == 1 else "AI-Generated",
-            "confidence": float(confidence),
-            "raw_probabilities": {
-                "AI": float(original_prediction[0]),
-                "Human": float(original_prediction[1]),
-            },
-        },
-    }
-
-    # Save with prediction data
-    explanation.save_to_json(
-        filepath=f"musiclime_explanation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-        song_info=song_info,
-        num_features=10,
-    )
 
     # Print explanations
     results = explanation.get_explanation(label=1, num_features=10)
@@ -65,12 +52,23 @@ def explain():
 
     for i, item in enumerate(results, 1):
         print(
-            f"#{i:2d} | {item['type']:6s} | {item['feature'][:50]:50s} | weight: {item['weight']:+.3f}"
+            f"#{i:2d} | {item['type']:6s} | {item['feature'][:50]:50s} | weight: {item['weight']:+.6f}"
         )
 
     print("=" * 80)
     print(f"[MusicLIME] Total features analyzed: {len(results)}")
     print("[MusicLIME] Higher absolute weights = more important for the prediction")
+
+    # End timing and timestamp
+    end_time = datetime.now()
+    total_duration = end_time - start_time
+    total_minutes = total_duration.total_seconds() / 60
+    print(f"\n[MusicLIME] Finished at: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(
+        green_bold(
+            f"[MusicLIME] Total execution time: {total_minutes:.2f} minutes ({total_duration.total_seconds():.1f} seconds)"
+        )
+    )
 
 
 if __name__ == "__main__":

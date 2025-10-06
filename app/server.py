@@ -2,18 +2,23 @@
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+# Processing imports
+import librosa
+import io
+
 # Utils/schemas imports
-from schemas import (
+from app.schemas import (
     ErrorResponse,
     ModelInfoResponse,
     PredictionResponse,
     PredictionXAIResponse,
     WelcomeResponse,
 )
-from utils import load_config
+from app.utils import load_config
 
 # Model/XAI-related imports
-# TODO: Import predict and predict with XAI function when available
+from scripts.explain import musiclime
+from scripts.predict import predict_pipeline
 
 
 # Load config at startup
@@ -92,7 +97,7 @@ def root():
             "/docs": "FastAPI auto-generated API docs",
             "/api/v1/model/info": "Model information and capabilities",
             "/api/v1/predict": "POST endpoint for bach-or-bot prediction",
-            "/api/v1/predict-xai": "POST endpoint for prediction with explainability",
+            "/api/v1/explain": "POST endpoint for prediction with explainability",
         },
     )
 
@@ -112,8 +117,14 @@ async def predict_music(
         # Get the audio file and content from sanitized and cleaned audio file
         audio_file, audio_content = audio_file_data
 
-        # TODO: Implement calling of predict function here
-        # results = predict(audio_file)
+        # Load audio from uploaded file with error handling for corrupted files
+        try:
+            audio_data, sr = librosa.load(io.BytesIO(audio_content))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid audio file: {str(e)}")
+
+        # Call MLP predict runner script to get results
+        results = predict_pipeline(audio_data, lyrics)
 
         return PredictionResponse(
             status="success",
@@ -121,14 +132,14 @@ async def predict_music(
             audio_file_name=audio_file.filename,
             audio_content_type=audio_file.content_type,
             audio_file_size=len(audio_content),
-            # results=preds
+            results=results,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post(
-    "/api/v1/predict-xai",
+    "/api/v1/explain",
     response_model=PredictionXAIResponse,
     responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
@@ -142,9 +153,14 @@ async def predict_music_with_xai(
         # Get the audio file and content from sanitized and cleaned audio file
         audio_file, audio_content = audio_file_data
 
-        # TODO: Implement calling of pred + xai function/s here
-        # preds = predict(audio_file)
-        # xai_scores = predict_with_musiclime(audio_file)
+        # Load audio from uploaded file with error handling for corrupted files
+        try:
+            audio_data, sr = librosa.load(io.BytesIO(audio_content))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid audio file: {str(e)}")
+
+        # Call musiclime runner script to get results
+        results = musiclime(audio_data, lyrics)
 
         return PredictionXAIResponse(
             status="success",
@@ -152,8 +168,7 @@ async def predict_music_with_xai(
             audio_file_name=audio_file.filename,
             audio_content_type=audio_file.content_type,
             audio_file_size=len(audio_content),
-            # results=preds,
-            # xai_results=xai_scores
+            results=results,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -76,7 +76,7 @@ def train_pipeline():
     None
     """
 
-    BATCH_SIZE = 50
+    BATCH_SIZE = 2000
     LYRIC_SIZE = 2048
     # Instantiate X and Y vectors
     X, Y = None, None

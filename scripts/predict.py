@@ -47,11 +47,11 @@ def predict_pipeline(audio, lyrics: str):
     audio_features = spectttra_predict(audio)
     lyrics_features = l2vec_single_train(llm2vec_model, lyrics)
 
-    # Scale the vectors using Z-Score
-    audio_features, lyrics_features = instance_scaler(audio_features, lyrics_features)
-
     # Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)
+
+    # Scale the vectors using Z-Score
+    audio_features, reduced_lyrics = instance_scaler(audio_features, reduced_lyrics)
 
     # Concatenate the vectors of audio_features + lyrics_features
     results = np.concatenate([audio_features, reduced_lyrics], axis=1)
@@ -71,12 +71,12 @@ def predict_pipeline(audio, lyrics: str):
     return {
         "probability": probability,
         "label": label,
-        "prediction": "Fake" if prediction == 0 else "Real",
+        "prediction": "AI-Generated" if prediction == 0 else "Human-Composed",
     }
 
 
 if __name__ == "__main__":
     # Example usage (replace with real inputs, place song inside data/raw.)
-    audio = "multo"
+    audio = "sample"
     lyrics = "Some lyrics text here"
     print(predict_pipeline(audio, lyrics))

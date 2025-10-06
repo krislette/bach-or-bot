@@ -1,6 +1,6 @@
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from src.utils.config_loader import AUDIO_SCALER, LYRIC_SCALER
+from src.utils.config_loader import AUDIO_SCALER, LYRICS_SCALER
 from sklearn.decomposition import IncrementalPCA
 from src.utils.config_loader import PCA_MODEL
 
@@ -151,7 +151,7 @@ def scale_pca_lyrics(data : dict):
     X_test, y_test   = data["test"]
 
     lyric_scaler = StandardScaler().fit(X_train)
-    joblib.dump(lyric_scaler, LYRIC_SCALER)
+    joblib.dump(lyric_scaler, LYRICS_SCALER)
 
     X_train = lyric_scaler.transform(X_train)
     X_test = lyric_scaler.transform(X_test)

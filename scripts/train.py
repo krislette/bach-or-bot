@@ -4,7 +4,7 @@ from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.models.mlp import build_mlp, load_config
 from pathlib import Path
-from src.utils.config_loader import DATASET_NPZ
+from src.utils.config_loader import DATASET_NPZ, RAW_DATASET_NPZ
 from src.utils.dataset import dataset_splitter, scale_pca_lyrics
 
 import numpy as np
@@ -76,6 +76,8 @@ def train_pipeline():
     None
     """
 
+    BATCH_SIZE = 50
+    LYRIC_SIZE = 2048
     # Instantiate X and Y vectors
     X, Y = None, None
 
@@ -85,52 +87,83 @@ def train_pipeline():
         print("Training dataset already exists. Loading file...")
 
         loaded_data = np.load(DATASET_NPZ)
-        X = loaded_data["X"]
-        Y = loaded_data["Y"]
+        data = {
+            "train": (loaded_data["X_train"], loaded_data["y_train"]),
+            "test":  (loaded_data["X_test"], loaded_data["y_test"]),
+            "val":   (loaded_data["X_val"], loaded_data["y_val"]),
+        }
     else:
         print("Training dataset does not exist. Processing data...")
         # Get batches from dataset and return full Y labels
-        batches, Y = dataset_read(batch_size=50)
+        splits, split_lengths = dataset_read(batch_size=BATCH_SIZE)
         batch_count = 1
 
         # Instantiate LLM2Vec Model
         l2v = load_llm2vec_model()
 
-        # Preallocate space for the whole concatenated sequence (20,000 samples)
-        X = np.zeros((len(Y), 2048), dtype=np.float32)
+        # Preallocate arrays
+        X_train = np.zeros((split_lengths[0], LYRIC_SIZE), dtype=np.float32)
+        X_test  = np.zeros((split_lengths[1], LYRIC_SIZE), dtype=np.float32)
+        X_val   = np.zeros((split_lengths[2], LYRIC_SIZE), dtype=np.float32)
 
-        start_idx = 0
-        for batch in batches:
-            audio, lyrics = None, None  # Gets rid of previous values consuming current memory
+        y_train = np.zeros(split_lengths[0], dtype=np.int32)
+        y_test  = np.zeros(split_lengths[1], dtype=np.int32)
+        y_val   = np.zeros(split_lengths[2], dtype=np.int32)
+
+        X_splits = [X_train, X_test, X_val]
+        y_splits = [y_train, y_test, y_val]
+
+        for split_idx, split in enumerate(splits):
+            start_idx = 0
+            for batch in split:
+                if len(batch) == 0:
+                    continue  # skip empty batch safely
             
-            print(f"Bulk Preprocessing batch {batch_count}...")
-            lyrics = bulk_preprocessing(batch, batch_count)
-            batch_count += 1
+                print(f"Bulk Preprocessing batch {batch_count}...")
+                lyrics = bulk_preprocessing(batch, batch_count)
+                batch_count += 1
 
-            # Call the train method for LLM2Vec
-            print(f"\nStarting LLM2Vec feature extraction...")
-            lyric_features = l2vec_train(l2v, lyrics)
+                batch_labels = batch['target'].values
 
-            batch_size = lyric_features.shape[0]
+                # Call the train method for LLM2Vec
+                print(f"\nStarting LLM2Vec feature extraction...")
+                lyric_features = l2vec_train(l2v, lyrics)
 
-            X[start_idx:start_idx + batch_size, :] = lyric_features
-            start_idx += batch_size
+                bsz = lyric_features.shape[0]
+                X_splits[split_idx][start_idx:start_idx + bsz, :] = lyric_features
+                y_splits[split_idx][start_idx:start_idx + bsz] = batch_labels
+                start_idx += bsz
 
-        # Convert label list into np.array
-        Y = np.array(Y)
-
-        logger.info("Saving dataset...")
+        # Save raw (unscaled) dataset
         np.savez(
-            file=DATASET_NPZ,
-            X=X,
-            Y=Y
+            RAW_DATASET_NPZ,
+            X_train=X_train, y_train=y_train,
+            X_val=X_val,     y_val=y_val,
+            X_test=X_test,   y_test=y_test,
         )
 
-    # Run splitting and scaling
-    logger.info("Running standard scaling...")
-    data = dataset_splitter(X, Y)
+        # Run scaling
+        logger.info("Running standard scaling...")
+        data = {
+            "train": (X_train, y_train),
+            "val":   (X_val, y_val),
+            "test":  (X_test, y_test),
+        }
     data = scale_pca_lyrics(data)
-    
+
+    # Save scaled dataset
+    X_train, y_train = data["train"]
+    X_val, y_val     = data["val"]
+    X_test, y_test   = data["test"]
+
+    logger.info("Saving scaled dataset...")
+    np.savez(
+        DATASET_NPZ,
+        X_train=X_train, y_train=y_train,
+        X_val=X_val,     y_val=y_val,
+        X_test=X_test,   y_test=y_test,
+    )
+
     print("Starting MLP training...")
     train_mlp_model(data)
 

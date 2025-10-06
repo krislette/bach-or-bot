@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import math
 
 from src.preprocessing.audio_preprocessor import AudioPreprocessor
 from src.preprocessing.lyrics_preprocessor import LyricsPreprocessor
@@ -77,26 +78,26 @@ def single_preprocessing(audio, lyric: str):
     return processed_song, processed_lyric
 
 
-def dataset_read(batch_size = 20):
-    """
-    Reads the csv file and returns batches of data
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    data_splits : list
-        List of dataframes acting as batches
-    
-    label : list
-        List of real/fake labels (in the formm of 0 and 1)
-    """
+def dataset_read(batch_size=20):
     dataset = pd.read_csv(DATASET_CSV)
-    label = dataset['target'].tolist()
 
-    # Split into x batches (50,000 / x)
-    data_splits = np.array_split(dataset, batch_size)
+    train = dataset[dataset["split"] == "train"]
+    test = dataset[dataset["split"] == "test"]
+    val = dataset[dataset["split"] == "valid"]
 
-    return data_splits, label
+    # Find the minimum split size (ignoring empty splits)
+    min_split_size = min([len(train), len(test), len(val)])
+    # Clamp batch_size so it never exceeds the smallest split
+    effective_batch_size = min(batch_size, min_split_size if min_split_size > 0 else batch_size)
+
+    def make_splits(df, batch_size):
+        if len(df) == 0:
+            return []
+        n_splits = math.ceil(len(df) / batch_size)
+        return np.array_split(df, n_splits)
+
+    train_splits = make_splits(train, effective_batch_size)
+    test_splits = make_splits(test, effective_batch_size)
+    val_splits = make_splits(val, effective_batch_size)
+
+    return [train_splits, test_splits, val_splits], [len(train), len(test), len(val)]

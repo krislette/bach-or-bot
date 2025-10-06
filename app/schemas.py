@@ -38,7 +38,6 @@ class PredictionXAIResponse(BaseModel):
     audio_content_type: str
     audio_file_size: int
     results: Optional[Dict] = None
-    xai_scores: Optional[Dict] = None
 
 
 # Pydantic model for the error response

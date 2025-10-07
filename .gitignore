@@ -160,7 +160,6 @@ tmp/
 temp/
 *.tmp
 *.temp
-src/llm2vectrain/access_token.py
 
 # Virtual env
 .venv312

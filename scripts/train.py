@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 def train_mlp_model(data : dict):
-def train_mlp_model(data : dict):
     """
     Train the MLP model with extracted features.
     

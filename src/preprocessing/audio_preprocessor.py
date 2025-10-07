@@ -111,7 +111,7 @@ class AudioPreprocessor:
             Resampled audio waveform at `TARGET_SAMPLING`.
         """
         if original_sr != self.TARGET_SAMPLING:
-            print(f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}.")
+            #print(f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}.")
             waveform = AF.resample(
                 waveform, 
                 orig_freq=original_sr, 
@@ -195,7 +195,7 @@ class AudioPreprocessor:
             Base filename to use.
         """
         self.OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
-        print(f"Saving {filename} to {self.OUTPUT_PATH}.")
+        #print(f"Saving {filename} to {self.OUTPUT_PATH}.")
         
         output_path = self.OUTPUT_PATH / f"{filename}"
 
@@ -227,7 +227,7 @@ class AudioPreprocessor:
         
         # Convert the audio into mono
         if waveform.shape[0] > 1:
-            print("Current audio is stereo. Converting to mono.")
+            #print("Current audio is stereo. Converting to mono.")
             waveform = waveform.mean(dim=0, keepdim=True)
 
         # If there is a skip value provided, trim it

@@ -1,5 +1,5 @@
 
-from src.preprocessing.preprocessor import dataset_read, bulk_preprocessing
+from src.preprocessing.preprocessor import dataset_read, bulk_preprocessing_lyrics
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.models.mlp import build_mlp, load_config
@@ -120,7 +120,7 @@ def train_pipeline():
                     continue  # skip empty batch safely
             
                 print(f"Bulk Preprocessing batch {batch_count}...")
-                lyrics = bulk_preprocessing(batch, batch_count)
+                lyrics = bulk_preprocessing_lyrics(batch, batch_count)
                 batch_count += 1
 
                 batch_labels = batch['target'].values

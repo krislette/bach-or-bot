@@ -121,6 +121,23 @@ def single_preprocessing(audio, lyric: str):
 
 
 def dataset_read(batch_size=20):
+    """
+    Reads the main dataset, splits it into the train/test/valid split, and computes
+    optimal number of samples per batch.
+
+    Parameters
+    ----------
+    batch_size : int
+        Number of data per batch
+
+    Returns
+    -------
+    split: list[splits]
+        A collection of the three splits
+
+    split_lengths : list[int]
+        List of the split lengths
+    """
     dataset = pd.read_csv(DATASET_CSV)
 
     train = dataset[dataset["split"] == "train"]
@@ -142,4 +159,7 @@ def dataset_read(batch_size=20):
     test_splits = make_splits(test, effective_batch_size)
     val_splits = make_splits(val, effective_batch_size)
 
-    return [train_splits, test_splits, val_splits], [len(train), len(test), len(val)]
+    splits = [train_splits, test_splits, val_splits]
+    split_lengths = [len(train), len(test), len(val)]
+
+    return splits, split_lengths

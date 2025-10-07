@@ -41,17 +41,14 @@ def dataset_splitter(X: np.ndarray, Y: np.ndarray, ids: np.ndarray = None):
     logger.info(f"Dataset shape: {X.shape}, Labels: {len(Y)}")
     logger.info(f"Class distribution: {np.bincount(Y)}")
 
-    if ids is None:
-        ids = np.arange(len(Y))  # fallback: row indices as ids
-
     # First split: train vs test
-    X_train, X_test, y_train, y_test, ids_train, ids_test = train_test_split(
+    X_train, X_test, y_train, y_test = train_test_split(
         X, Y, ids, test_size=0.1, random_state=42, stratify=Y
     )
 
     # Second split: train vs val
-    X_train, X_val, y_train, y_val, ids_train, ids_val = train_test_split(
-        X_train, y_train, ids_train, test_size=0.2222, random_state=42, stratify=y_train
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train, y_train, test_size=0.2222, random_state=42, stratify=y_train
     )
 
     logger.info(f"Train: {X_train.shape}, Validation: {X_val.shape}, Test: {X_test.shape}")
@@ -245,7 +242,7 @@ def dataset_scaler(audio: np.ndarray, lyrics: np.ndarray):
 
     # Save the trained scalers for prediction
     joblib.dump(audio_scaler, AUDIO_SCALER)
-    joblib.dump(lyric_scaler, LYRIC_SCALER)
+    joblib.dump(lyric_scaler, LYRICS_SCALER)
 
     return audio_scaler, lyric_scaler
 

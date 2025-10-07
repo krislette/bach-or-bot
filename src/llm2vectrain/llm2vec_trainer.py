@@ -1,10 +1,25 @@
-from sklearn.decomposition import IncrementalPCA
-from sklearn.preprocessing import StandardScaler
 from pathlib import Path
 
-import numpy as np
-import pickle
+import joblib
 import torch
+
+## For Single Input
+def load_pca_model(vectors, model_path="models/fusion/pca.pkl"):
+    """
+    Load a pre-trained PCA model and transform the input vectors.
+
+    Args:
+        vectors: The input data to transform.
+        model_path: The file path of the pre-trained PCA model.
+
+    Returns:
+        output: The PCA-transformed data.
+
+    Note: Change the model path as needed in the data_config.yml file (or set the path file as shown above). Can be used for the main program.
+    """
+    model_path = Path(model_path)
+    pca = joblib.load(model_path)
+    return pca.transform(vectors)
 
 def l2vec_single_train(l2v, lyrics):
     """

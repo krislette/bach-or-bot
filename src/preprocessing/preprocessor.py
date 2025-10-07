@@ -28,6 +28,48 @@ def bulk_preprocessing(batch: pd.DataFrame, batch_count: int):
         List of loaded lyrics in string form.
     """
 
+    audio_preprocessor = AudioPreprocessor(script="train")
+    lyric_preprocessor = LyricsPreprocessor()
+
+    audio_list, lyric_list = [], []
+    count, batch_length = 1, len(batch)
+
+    print(f"Preprocessing training data with length {batch_length}\n")
+
+    for row in batch.itertuples():
+        print(f"Batch {batch_count}     -    {count}/{batch_length}")
+
+        # Preprocess song and append to audio list
+        processed_song = audio_preprocessor(file=row.directory, skip_time=row.skip_time, train=True)
+        audio_list.append(processed_song)
+
+        # Preprocess lyric and append to lyric list
+        processed_lyric = lyric_preprocessor(lyrics=row.lyrics)
+        lyric_list.append(processed_lyric)
+
+        count += 1
+
+    return audio_list, lyric_list
+
+
+def bulk_preprocessing_lyrics(batch: pd.DataFrame, batch_count: int):
+    """
+    Applies lyrics preprocessing to a training batch
+
+    Parameters
+    ----------
+    batch : pd.dataframe
+        Dataframe containing the batch data.
+
+    batch_count : int
+        Batch count value.
+
+    Returns
+    -------
+    lyric_list : list
+        List of loaded lyrics in string form.
+    """
+
     lyric_preprocessor = LyricsPreprocessor()
 
     lyric_list = []

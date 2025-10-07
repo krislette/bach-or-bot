@@ -1,24 +1,34 @@
-
 from src.preprocessing.preprocessor import dataset_read, bulk_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.models.mlp import build_mlp, load_config
+
+from src.utils.config_loader import DATASET_NPZ, PCA_MODEL
+from src.utils.dataset import dataset_scaler, dataset_splitter
+from sklearn.decomposition import PCA
+
 from pathlib import Path
 from src.utils.config_loader import DATASET_NPZ, RAW_DATASET_NPZ
 from src.utils.dataset import scale_pca
 
 import numpy as np
 import logging
+import joblib
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 def train_mlp_model(data : dict):
+def train_mlp_model(data : dict):
     """
     Train the MLP model with extracted features.
     
+    Parameters
+    ----------
+        data : dict{np.array}
+            A dictionary of np.arrays, containing the train/test/val split.
     Parameters
     ----------
         data : dict{np.array}
@@ -28,6 +38,11 @@ def train_mlp_model(data : dict):
     
     # Load MLP configuration
     config = load_config("config/model_config.yml")
+
+    # Destructure the dictionary to get data split
+    X_train, y_train = data["train"]
+    X_val, y_val     = data["val"]
+    X_test, y_test   = data["test"]
 
     # Destructure the dictionary to get data split
     X_train, y_train = data["train"]
@@ -46,6 +61,7 @@ def train_mlp_model(data : dict):
     # Load best model and evaluate on test set
     try:
         mlp_classifier.load_model("models/mlp/mlp_best.pth")
+        mlp_classifier.load_model("models/mlp/mlp_best.pth")
         logger.info("Loaded best model for final evaluation")
     except FileNotFoundError:
         logger.warning("Best model not found, using current model")
@@ -53,13 +69,16 @@ def train_mlp_model(data : dict):
     # Final evaluation
     test_results = mlp_classifier.evaluate(X_test, y_test)
 
+
     # Save final model
+    mlp_classifier.save_model("models/mlp/mlp_multimodal.pth")
     mlp_classifier.save_model("models/mlp/mlp_multimodal.pth")
     
     logger.info("MLP training completed successfully!")
     logger.info(f"Final test accuracy: {test_results['test_accuracy']:.2f}%")
     
     return mlp_classifier
+
 
 
 def train_pipeline():
@@ -86,6 +105,7 @@ def train_pipeline():
 
     if dataset_path.exists():
         logger.info("Training dataset already exists. Loading file...")
+        logger.info("Training dataset already exists. Loading file...")
 
         loaded_data = np.load(RAW_DATASET_NPZ)
         data = {
@@ -94,6 +114,7 @@ def train_pipeline():
             "val":   (loaded_data["X_val"], loaded_data["y_val"]),
         }
     else:
+        logger.info("Training dataset does not exist. Processing data...")
         logger.info("Training dataset does not exist. Processing data...")
         # Get batches from dataset and return full Y labels
         splits, split_lengths = dataset_read(batch_size=BATCH_SIZE)
@@ -187,4 +208,3 @@ def train_pipeline():
 
 if __name__ == "__main__":
     train_pipeline()
-

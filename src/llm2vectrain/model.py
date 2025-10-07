@@ -3,6 +3,7 @@ from transformers import AutoTokenizer, AutoModel, AutoConfig
 from src.llm2vectrain.access_token import access_token
 import torch
 from torchao.quantization import quantize_, Int8WeightOnlyConfig
+from torchao.quantization import quantize_, Int8WeightOnlyConfig
 
 
 def load_llm2vec_model():
@@ -16,9 +17,20 @@ def load_llm2vec_model():
     # GPU path: use bf16 for speed
         model = AutoModel.from_pretrained(
         model_id,
+    
+    model_id = "McGill-NLP/LLM2Vec-Sheared-LLaMA-mntp"
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_id, padding = True, truncation = True, max_length = 512)
+    config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+    
+    if torch.cuda.is_available():
+    # GPU path: use bf16 for speed
+        model = AutoModel.from_pretrained(
+        model_id,
         trust_remote_code=True,
         config=config,
         torch_dtype=torch.bfloat16,
+        device_map="cuda",
         device_map="cuda",
         token=access_token,
     )

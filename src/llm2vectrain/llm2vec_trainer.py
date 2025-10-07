@@ -1,10 +1,11 @@
 from pathlib import Path
+from src.utils.config_loader import PCA_MODEL
 
 import joblib
 import torch
 
 ## For Single Input
-def load_pca_model(vectors, model_path="models/fusion/pca.pkl"):
+def load_pca_model(vectors, model_path=PCA_MODEL):
     """
     Load a pre-trained PCA model and transform the input vectors.
 

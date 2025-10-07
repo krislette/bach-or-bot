@@ -1,12 +1,13 @@
-
 from src.preprocessing.preprocessor import single_preprocessing
-from src.spectttra.spectttra_trainer import spectttra_train
+from src.spectttra.spectttra_trainer import spectttra_predict
 from src.llm2vectrain.model import load_llm2vec_model
-from src.llm2vectrain.llm2vec_trainer import l2vec_train
-from pathlib import Path
-from src.utils.config_loader import DATASET_NPZ
+from src.llm2vectrain.llm2vec_trainer import l2vec_single_train, load_pca_model
+from src.models.mlp import build_mlp, load_config
+from src.utils.dataset import instance_scaler
 
 import numpy as np
+import pandas as pd
+import torch
 
 def predict_pipeline(audio, lyrics: str):
     """
@@ -30,9 +31,6 @@ def predict_pipeline(audio, lyrics: str):
         A numerical representation of the prediction
     """
 
-    # Instantiate X and Y vectors
-    X, Y = None, None
-
     # Instantiate LLM2Vec Model
     llm2vec_model = load_llm2vec_model()
 
@@ -40,21 +38,46 @@ def predict_pipeline(audio, lyrics: str):
     audio, lyrics = single_preprocessing(audio, lyrics)
 
     # Call the train method for both models
-    audio_features = spectttra_train(audio)
-    lyrics_features = l2vec_train(llm2vec_model, [lyrics])
+    audio_features = spectttra_predict(audio)
+    lyrics_features = l2vec_single_train(llm2vec_model, lyrics)
+
+    # Scale the vectors using Z-Score
+    audio_features, lyrics_features = instance_scaler(audio_features, lyrics_features)
+
+    # Reduce the lyrics using saved PCA model
+    reduced_lyrics = load_pca_model(lyrics_features)
 
     # Concatenate the vectors of audio_features + lyrics_features
-    results = np.concatenate([audio_features[0], lyrics_features[0]])
+    results = np.concatenate([audio_features, reduced_lyrics], axis=1)
 
-    # TODO: Call MLP predict script
-    # prediction = model_predict(results)
+    # ---- Load MLP Classifier ----
+    config = load_config("config/model_config.yml")
+    classifier = build_mlp(input_dim=results.shape[1], config=config)
+
+    # Load trained weights (make sure this path matches where you saved your model)
+    model_path = "models/mlp/mlp_multimodal.pth"
+    classifier.load_model(model_path)
+    classifier.model.eval()
+
+    # Run prediction
+    probability, prediction, label = classifier.predict_single(results)
 
     return {
-        "label": prediction,
+        "probability": probability,
+        "label": label,
         "prediction": "Fake" if prediction == 0 else "Real"
     }
 
+if __name__ == "_main_":
+    # Example usage (replace with real inputs, place song inside data/raw.)
+    data = pd.read_csv("data/raw/predict_data.csv")
 
+    result = []
+    label = []
+    for row in data.itertuples():
+        label.append(row.label)
+        result.append(predict_pipeline(row.song, row.lyrics))
 
-if __name__ == "__main__":
-    predict_pipeline()
+    for i in range(len(result)):
+        print(result[i])
+        print(label[i]) 

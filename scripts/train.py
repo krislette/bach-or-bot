@@ -1,11 +1,12 @@
 
 from src.preprocessing.preprocessor import dataset_read, bulk_preprocessing
+from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.models.mlp import build_mlp, load_config
 from pathlib import Path
 from src.utils.config_loader import DATASET_NPZ, RAW_DATASET_NPZ
-from src.utils.dataset import dataset_splitter, scale_pca_lyrics
+from src.utils.dataset import scale_pca
 
 import numpy as np
 import logging
@@ -76,24 +77,24 @@ def train_pipeline():
     None
     """
 
+    # Set constant sizes
     BATCH_SIZE = 2000
+    AUDIO_SIZE = 384
     LYRIC_SIZE = 2048
-    # Instantiate X and Y vectors
-    X, Y = None, None
 
-    dataset_path = Path(DATASET_NPZ)
+    dataset_path = Path(RAW_DATASET_NPZ)
 
     if dataset_path.exists():
-        print("Training dataset already exists. Loading file...")
+        logger.info("Training dataset already exists. Loading file...")
 
-        loaded_data = np.load(DATASET_NPZ)
+        loaded_data = np.load(RAW_DATASET_NPZ)
         data = {
             "train": (loaded_data["X_train"], loaded_data["y_train"]),
             "test":  (loaded_data["X_test"], loaded_data["y_test"]),
             "val":   (loaded_data["X_val"], loaded_data["y_val"]),
         }
     else:
-        print("Training dataset does not exist. Processing data...")
+        logger.info("Training dataset does not exist. Processing data...")
         # Get batches from dataset and return full Y labels
         splits, split_lengths = dataset_read(batch_size=BATCH_SIZE)
         batch_count = 1
@@ -102,9 +103,9 @@ def train_pipeline():
         l2v = load_llm2vec_model()
 
         # Preallocate arrays
-        X_train = np.zeros((split_lengths[0], LYRIC_SIZE), dtype=np.float32)
-        X_test  = np.zeros((split_lengths[1], LYRIC_SIZE), dtype=np.float32)
-        X_val   = np.zeros((split_lengths[2], LYRIC_SIZE), dtype=np.float32)
+        X_train = np.zeros((split_lengths[0], AUDIO_SIZE + LYRIC_SIZE), dtype=np.float32)
+        X_test  = np.zeros((split_lengths[1], AUDIO_SIZE + LYRIC_SIZE), dtype=np.float32)
+        X_val   = np.zeros((split_lengths[2], AUDIO_SIZE + LYRIC_SIZE), dtype=np.float32)
 
         y_train = np.zeros(split_lengths[0], dtype=np.int32)
         y_test  = np.zeros(split_lengths[1], dtype=np.int32)
@@ -113,28 +114,42 @@ def train_pipeline():
         X_splits = [X_train, X_test, X_val]
         y_splits = [y_train, y_test, y_val]
 
+        # Loop through the three splits
         for split_idx, split in enumerate(splits):
             start_idx = 0
+
+            # Loop through batches for each split
             for batch in split:
                 if len(batch) == 0:
                     continue  # skip empty batch safely
             
-                print(f"Bulk Preprocessing batch {batch_count}...")
-                lyrics = bulk_preprocessing(batch, batch_count)
-                batch_count += 1
-
+                logger.info(f"Bulk Preprocessing batch {batch_count}...")
+                audio, lyrics = bulk_preprocessing(batch, batch_count)
                 batch_labels = batch['target'].values
 
+                # Extract audio features
+                logger.info("Starting SpecTTTra feature extraction...")
+                audio_features = spectttra_train(audio)
+
                 # Call the train method for LLM2Vec
-                print(f"\nStarting LLM2Vec feature extraction...")
+                logger.info(f"\nStarting LLM2Vec feature extraction...")
                 lyric_features = l2vec_train(l2v, lyrics)
 
-                bsz = lyric_features.shape[0]
-                X_splits[split_idx][start_idx:start_idx + bsz, :] = lyric_features
+                # Concatenate the two features
+                batch_feature = np.concatenate([audio_features, lyric_features], axis=1)
+
+                # Allocate them to the preallocated blocks
+                bsz = batch_feature.shape[0]
+                X_splits[split_idx][start_idx:start_idx + bsz, :] = batch_feature
                 y_splits[split_idx][start_idx:start_idx + bsz] = batch_labels
+
+                logger.info(f"Batch {batch_count}: {bsz} samples, start_idx={start_idx}")
+
+                batch_count += 1
                 start_idx += bsz
 
         # Save raw (unscaled) dataset
+        logger.info("Saving raw dataset...")
         np.savez(
             RAW_DATASET_NPZ,
             X_train=X_train, y_train=y_train,
@@ -149,7 +164,10 @@ def train_pipeline():
             "val":   (X_val, y_val),
             "test":  (X_test, y_test),
         }
-    data = scale_pca_lyrics(data)
+
+    # Scale and use PCA fitting for all raw data
+    logger.info("Scaling and applying PCA...")
+    data = scale_pca(data)
 
     # Save scaled dataset
     X_train, y_train = data["train"]
@@ -164,7 +182,7 @@ def train_pipeline():
         X_test=X_test,   y_test=y_test,
     )
 
-    print("Starting MLP training...")
+    logger.info("Starting MLP training...")
     train_mlp_model(data)
 
 if __name__ == "__main__":

@@ -96,7 +96,7 @@ def train_pipeline():
     """
 
     # Set constant sizes
-    BATCH_SIZE = 2000
+    BATCH_SIZE = 200
     AUDIO_SIZE = 384
     LYRIC_SIZE = 2048
 

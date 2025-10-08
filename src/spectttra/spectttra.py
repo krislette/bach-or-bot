@@ -1,6 +1,9 @@
+import torch
 import torch.nn as nn
 from .transformer import Transformer
 from .tokenizer import STTokenizer
+from pathlib import Path
+from src.spectttra.feature import FeatureExtractor
 
 
 class SpecTTTra(nn.Module):
@@ -113,3 +116,52 @@ class SpecTTTra(nn.Module):
         output = self.transformer(spectro_temporal_tokens)  # shape: (B, T/t + F/f, dim)
 
         return output
+    
+def build_spectttra_from_cfg(cfg, device):
+    """
+    Construct SpecTTTra model and FeatureExtractor given a config.
+    Returns (FeatureExtractor, SpecTTTra, n_mels, n_frames)
+    """
+    feat_ext = FeatureExtractor(cfg).to(device)
+
+    # Probe dummy input to determine mel and frame dimensions
+    with torch.no_grad():
+        dummy_wave = torch.zeros(1, cfg.audio.max_len, device=device)
+        dummy_mel = feat_ext(dummy_wave.float())
+    _, n_mels, n_frames = dummy_mel.shape
+
+    model_cfg = cfg.model
+    model = SpecTTTra(
+        input_spec_dim=n_mels,
+        input_temp_dim=n_frames,
+        embed_dim=model_cfg.embed_dim,
+        t_clip=model_cfg.t_clip,
+        f_clip=model_cfg.f_clip,
+        num_heads=model_cfg.num_heads,
+        num_layers=model_cfg.num_layers,
+        pre_norm=model_cfg.pre_norm,
+        pe_learnable=model_cfg.pe_learnable,
+        pos_drop_rate=model_cfg.pos_drop_rate,
+        attn_drop_rate=model_cfg.attn_drop_rate,
+        proj_drop_rate=model_cfg.proj_drop_rate,
+        mlp_ratio=model_cfg.mlp_ratio,
+    ).to(device)
+
+    return feat_ext, model
+
+
+def load_frozen_spectttra(model, ckpt_path, device):
+    """
+    Load pretrained SpecTTTra weights from a frozen checkpoint.
+    """
+    ckpt_path = Path(ckpt_path)
+    if ckpt_path.exists():
+        state = torch.load(ckpt_path, map_location=device)
+        model.load_state_dict(state)
+        print(f"[INFO] Loaded frozen SpecTTTra checkpoint from {ckpt_path}")
+    else:
+        ckpt_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(model.state_dict(), ckpt_path)
+        print(f"[INFO] Saved frozen SpecTTTra checkpoint to {ckpt_path}")
+    model.eval()
+    return model

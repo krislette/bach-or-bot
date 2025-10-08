@@ -3,6 +3,7 @@ import librosa
 import io
 import torch
 import random
+import numpy as np
 
 from pathlib import Path
 from torchaudio import functional as AF
@@ -11,6 +12,7 @@ from src.utils.config_loader import RAW_DIR, PROCESSED_DIR
 
 # Gets the absolute path so that we can append our folder paths.
 CURRENT_PATH = Path().absolute()
+
 
 class AudioPreprocessor:
     """
@@ -29,7 +31,7 @@ class AudioPreprocessor:
     ----------
     script : {"train"}, optional
         Condition to apply certain training methods
-        
+
     waveform_norm : {"std", "minmax"}, optional
         Normalization method for waveforms:
         - "std": divide by standard deviation
@@ -41,15 +43,14 @@ class AudioPreprocessor:
         self.SCRIPT = script
         self.INPUT_SAMPLING = 48000
         self.TARGET_SAMPLING = 16000
-        self.TARGET_NUM_SAMPLE = 1920000    # This means 120 seconds or 2 minutes
+        self.TARGET_NUM_SAMPLE = 1920000  # This means 120 seconds or 2 minutes
         self.INPUT_PATH = CURRENT_PATH / RAW_DIR
         self.OUTPUT_PATH = CURRENT_PATH / PROCESSED_DIR
         self.WAVEFORM_NORM = waveform_norm
 
-
     def load_audio(self, audiofile):
         """
-        Load an MP3 audio file (disk or bytes) using librosa, 
+        Load an MP3 audio file (disk or bytes) using librosa,
         then convert to a torch.Tensor.
 
         Parameters
@@ -73,10 +74,18 @@ class AudioPreprocessor:
                 y, sr = librosa.load(str(file), sr=None, mono=False)
 
             elif isinstance(audiofile, (bytes, io.BytesIO)):
-                file = io.BytesIO(audiofile) if isinstance(audiofile, bytes) else audiofile
+                file = (
+                    io.BytesIO(audiofile) if isinstance(audiofile, bytes) else audiofile
+                )
                 file.seek(0)
 
                 y, sr = librosa.load(file, sr=None, mono=False)
+
+            elif isinstance(audiofile, np.ndarray):
+                # Handle numpy array directly (from librosa or OpenUnmix)
+                y = audiofile
+                # Default sample rate (we can make this configurable moving forward... but I hardcoded for now)
+                sr = 44100
 
             else:
                 raise ValueError(f"Unsupported audiofile type: {type(audiofile)}")
@@ -91,8 +100,9 @@ class AudioPreprocessor:
             return waveform, sr
 
         except Exception as e:
-            raise RuntimeError(f"Error: File cannot be loaded. Check the filename and type. {e}")
-
+            raise RuntimeError(
+                f"Error: File cannot be loaded. Check the filename and type. {e}"
+            )
 
     def resample_audio(self, original_sr, waveform):
         """
@@ -111,14 +121,13 @@ class AudioPreprocessor:
             Resampled audio waveform at `TARGET_SAMPLING`.
         """
         if original_sr != self.TARGET_SAMPLING:
-            print(f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}.")
+            print(
+                f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}."
+            )
             waveform = AF.resample(
-                waveform, 
-                orig_freq=original_sr, 
-                new_freq=self.TARGET_SAMPLING
+                waveform, orig_freq=original_sr, new_freq=self.TARGET_SAMPLING
             )
         return waveform
-        
 
     def pad_trim(self, waveform, random_crop=False):
         """
@@ -139,9 +148,9 @@ class AudioPreprocessor:
             if random_crop:
                 max_start = num_samples - self.TARGET_NUM_SAMPLE
                 start = random.randint(0, max_start)
-                return waveform[..., start:start + self.TARGET_NUM_SAMPLE]
+                return waveform[..., start : start + self.TARGET_NUM_SAMPLE]
             else:
-                return waveform[..., :self.TARGET_NUM_SAMPLE]
+                return waveform[..., : self.TARGET_NUM_SAMPLE]
 
         elif num_samples < self.TARGET_NUM_SAMPLE:
             padding_amount = self.TARGET_NUM_SAMPLE - num_samples
@@ -156,8 +165,7 @@ class AudioPreprocessor:
 
         else:
             return waveform
-        
-    
+
     def normalize_waveform(self, waveform, method):
         """
         Normalize audio waveform.
@@ -182,7 +190,6 @@ class AudioPreprocessor:
             return waveform / max(waveform.max(), 1e-6)
         return waveform
 
-
     def save_waveform(self, waveform, filename) -> None:
         """
         Save waveform to disk as a .wav file.
@@ -196,11 +203,10 @@ class AudioPreprocessor:
         """
         self.OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
         print(f"Saving {filename} to {self.OUTPUT_PATH}.")
-        
+
         output_path = self.OUTPUT_PATH / f"{filename}"
 
         torchaudio.save(str(output_path), waveform, self.TARGET_SAMPLING)
-
 
     def __call__(self, file, skip_time=0, train=False):
         """
@@ -221,10 +227,10 @@ class AudioPreprocessor:
             Normalized tensor of a waveform
         """
         waveform, sample_rate = self.load_audio(file)
-    
+
         # Resample the audio to 16kHz
         waveform = self.resample_audio(original_sr=sample_rate, waveform=waveform)
-        
+
         # Convert the audio into mono
         if waveform.shape[0] > 1:
             print("Current audio is stereo. Converting to mono.")
@@ -232,7 +238,7 @@ class AudioPreprocessor:
 
         # If there is a skip value provided, trim it
         if skip_time is not None and skip_time > 0:
-            #print(f"Skipping first {skip_time:.2f} seconds.")
+            # print(f"Skipping first {skip_time:.2f} seconds.")
             start_sample = int(skip_time * self.TARGET_SAMPLING)
             waveform = waveform[:, start_sample:]
 

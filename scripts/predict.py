@@ -2,6 +2,7 @@ from src.preprocessing.preprocessor import single_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_predict
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_single_train, load_pca_model
+from src. llm2vectrain.flask import request_llm2vect_single
 from src.models.mlp import build_mlp, load_config
 from pathlib import Path
 from src.utils.config_loader import DATASET_NPZ
@@ -38,14 +39,14 @@ def predict_pipeline(audio, lyrics: str):
     X, Y = None, None
 
     # Instantiate LLM2Vec Model
-    llm2vec_model = load_llm2vec_model()
+    #llm2vec_model = load_llm2vec_model()
 
     # Preprocess both audio and lyrics
     audio, lyrics = single_preprocessing(audio, lyrics)
 
     # Call the train method for both models
     audio_features = spectttra_predict(audio)
-    lyrics_features = l2vec_single_train(llm2vec_model, lyrics)
+    lyrics_features = request_llm2vect_single(lyrics)
 
     # Scale the vectors using Z-Score
     audio_features, lyrics_features = instance_scaler(audio_features, lyrics_features)

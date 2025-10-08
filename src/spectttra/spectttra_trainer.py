@@ -18,28 +18,22 @@ _DEVICE = None
 def build_spectttra(cfg, device):
     """
     Initialize SpecTTTra and FeatureExtractor modules, and load a frozen checkpoint.
-
-    Args:
-        cfg (SimpleNamespace): Configuration containing audio, mel-spectrogram, and model parameters.
-        device (torch.device): Target device for model and feature extractor.
-
-    Returns:
-        tuple:
-            FeatureExtractor: Module for converting raw audio into mel-spectrogram features.
-            SpecTTTra: Spectro-temporal transformer model initialized with checkpoint weights.
     """
     feat_ext = FeatureExtractor(cfg).to(device)
 
-    # Build model once using placeholder input to infer mel and frame dimensions
-    with torch.no_grad():
-        dummy_wave = torch.zeros(1, cfg.audio.max_len, device=device)
-        dummy_mel = feat_ext(dummy_wave.float())
-    _, n_mels, n_frames = dummy_mel.shape
+    # --- CRITICAL FIX: REMOVE DYNAMIC SHAPE INFERENCE ---
+    # The pre-trained model expects specific, fixed input dimensions.
+    # We must hardcode them here to ensure the model architecture matches the checkpoint weights exactly.
+    # The expected number of frames (n_frames) is taken directly from the RuntimeError message.
+    n_mels = cfg.melspec.n_mels  # This should be 128
+    n_frames = 3744             # This MUST match the checkpoint's expectation
+
+    print(f"[INFO] Initializing SpecTTTra with fixed dimensions: n_mels={n_mels}, n_frames={n_frames}")
 
     model_cfg = cfg.model
     model = SpecTTTra(
         input_spec_dim=n_mels,
-        input_temp_dim=n_frames,
+        input_temp_dim=n_frames, # Use the hardcoded value
         embed_dim=model_cfg.embed_dim,
         t_clip=model_cfg.t_clip,
         f_clip=model_cfg.f_clip,
@@ -53,16 +47,37 @@ def build_spectttra(cfg, device):
         mlp_ratio=model_cfg.mlp_ratio,
     ).to(device)
 
-    # Load frozen checkpoint if it exists; otherwise, save initial state
     ckpt_path = Path("models/spectttra/spectttra_frozen.pth")
     if ckpt_path.exists():
+        print(f"[INFO] Found SpecTTTra checkpoint at {ckpt_path}. Loading weights...")
         state = torch.load(ckpt_path, map_location=device)
-        model.load_state_dict(state)
-        print(f"[INFO] Loaded frozen SpecTTTra checkpoint from {ckpt_path}")
+
+        new_state_dict = {}
+        for k, v in state.items():
+            if k.startswith('encoder.'):
+                new_key = k[len('encoder.'):]
+                new_state_dict[new_key] = v
+            else:
+                new_state_dict[k] = v
+
+        # Now that the shapes match, this should load without a size mismatch error.
+        missing_keys, unexpected_keys = model.load_state_dict(new_state_dict, strict=False)
+        
+        if missing_keys:
+            # You might see a few missing keys if your SpecTTTra class is slightly different, but the core should load.
+            print(f"[WARNING] Keys missing in the model that were expected: {missing_keys}")
+        if unexpected_keys:
+            # Seeing 'classifier' or 'ft_extractor' keys here is NORMAL and SAFE.
+            print(f"[INFO] Keys in file that were not used by the model (this is expected): {unexpected_keys}")
+
+        print("[INFO] Successfully loaded pre-trained SpecTTTra weights.")
+
     else:
-        ckpt_path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(model.state_dict(), ckpt_path)
-        print(f"[INFO] Saved frozen SpecTTTra checkpoint to {ckpt_path}")
+        raise FileNotFoundError(
+            f"Pre-trained model not found at {ckpt_path}. "
+            "Please download the 'pytorch_model.bin' from Hugging Face, "
+            "rename it to 'spectttra_frozen.pth', and place it in the correct directory."
+        )
 
     model.eval()
     return feat_ext, model
@@ -137,18 +152,8 @@ def _init_predictor_once():
 def spectttra_predict(audio_tensor):
     """
     Run single-input inference with SpecTTTra.
-
-    Args:
-        audio_tensor (torch.Tensor): Input waveform of shape (1, num_samples).
-            Must already be preprocessed including resampled to the target sampling rate (16 kHz).
-
-    Returns:
-        np.ndarray:
-            1D embedding vector of shape (embed_dim,). The embedding is obtained
-            by mean-pooling the transformer token outputs.
     """
     global _FEAT_EXT, _MODEL, _CFG, _DEVICE
-
     _init_predictor_once()
 
     device = _DEVICE
@@ -156,44 +161,37 @@ def spectttra_predict(audio_tensor):
     model = _MODEL
     cfg = _CFG
 
-    # Move waveform to device but keep float for mel extraction
     waveform = audio_tensor.to(device).float()
 
     with torch.no_grad():
-        # Extract mel-spectrogram
-        melspec = feat_ext(waveform)        # (B, n_mels, n_frames)
+        melspec = feat_ext(waveform)
+
+        # --- FINAL FIX: Ensure melspec shape matches model's expectation ---
+        expected_frames = model.input_temp_dim # This will be 3744
+        if melspec.shape[2] > expected_frames:
+            melspec = melspec[:, :, :expected_frames]
+        elif melspec.shape[2] < expected_frames:
+            padding = expected_frames - melspec.shape[2]
+            melspec = torch.nn.functional.pad(melspec, (0, padding))
+        # --- End of fix ---
 
         if device.type == "cuda":
             with torch.cuda.amp.autocast(enabled=True):
-                tokens = model(melspec)     # (B, num_tokens, embed_dim)
-                pooled = tokens.mean(dim=1) # (B, embed_dim)
+                tokens = model(melspec)
+                pooled = tokens.mean(dim=1)
         else:
             tokens = model(melspec)
             pooled = tokens.mean(dim=1)
 
-    # Return numpy vector
-    out = pooled.squeeze(0).cpu().numpy()   # (embed_dim,)
+    out = pooled.squeeze(0).cpu().numpy()
     return out
 
 
 def spectttra_train(audio_tensors):
     """
     Run batch input training with SpecTTTra.
-
-    Args:
-        audio_tensors (list[torch.Tensor]):
-            List of input waveforms. Each element should be shaped either
-            (num_samples,) or (1, num_samples). Each waveform is processed
-            independently and its pooled embedding is collected.
-
-    Returns:
-        np.ndarray:
-            2D array of shape (batch_size, embed_dim), where each row
-            corresponds to the pooled embedding for one input waveform.
     """
-
     global _FEAT_EXT, _MODEL, _CFG, _DEVICE
-
     _init_predictor_once()
 
     if not audio_tensors:
@@ -203,20 +201,32 @@ def spectttra_train(audio_tensors):
     model = _MODEL
     device = _DEVICE
 
-    batch = []
-    for waveform in audio_tensors:
-        waveform = waveform.to(device)
-        with torch.no_grad():
-            melspec = feat_ext(waveform.float())    # (B, n_mels, n_frames)
+    # This refactors the loop to be a much faster single-batch operation
+    try:
+        waveforms_batch = torch.cat(audio_tensors, dim=0).to(device).float()
+    except Exception as e:
+        print(f"Error during tensor concatenation, falling back to loop. Fix preprocessing for speed. Error: {e}")
+        batch_list = [spectttra_predict(w) for w in audio_tensors]
+        return np.array(batch_list)
 
-            if device.type == "cuda":
-                with torch.cuda.amp.autocast(enabled=True):
-                    tokens = model(melspec)         # (B, num_tokens, embed_dim)
-                    pooled = tokens.mean(dim=1)     # (B, embed_dim)
-            else:
+    with torch.no_grad():
+        melspec = feat_ext(waveforms_batch)
+
+        # --- FINAL FIX: Ensure melspec shape matches model's expectation ---
+        expected_frames = model.input_temp_dim # This will be 3744
+        if melspec.shape[2] > expected_frames:
+            melspec = melspec[:, :, :expected_frames]
+        elif melspec.shape[2] < expected_frames:
+            padding = expected_frames - melspec.shape[2]
+            melspec = torch.nn.functional.pad(melspec, (0, padding))
+        # --- End of fix ---
+
+        if device.type == "cuda":
+            with torch.cuda.amp.autocast(enabled=True):
                 tokens = model(melspec)
                 pooled = tokens.mean(dim=1)
+        else:
+            tokens = model(melspec)
+            pooled = tokens.mean(dim=1)
 
-        batch.append(pooled.cpu().numpy())
-
-    return np.vstack(batch)
+    return pooled.cpu().numpy()

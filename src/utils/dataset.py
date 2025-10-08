@@ -1,6 +1,6 @@
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
-from src.utils.config_loader import AUDIO_SCALER, LYRICS_SCALER
+from src.utils.config_loader import AUDIO_SCALER, LYRICS_SCALER, PCA_SCALER
 from sklearn.decomposition import IncrementalPCA
 from src.utils.config_loader import PCA_MODEL
 
@@ -83,40 +83,49 @@ def scale_pca(data : dict):
     X_test, y_test   = data["test"]
 
     # Segment the concatenated embedding to audio and lyrics
-    X_train_audio, X_train = X_train[:, :384], X_train[:, 384:]
-    X_test_audio, X_test = X_test[:, :384], X_test[:, 384:]
-    X_val_audio, X_val = X_val[:, :384], X_val[:, 384:]
+    X_train_audio, X_train_lyrics = X_train[:, :384], X_train[:, 384:]
+    X_test_audio, X_test_lyrics = X_test[:, :384], X_test[:, 384:]
+    X_val_audio, X_val_lyrics = X_val[:, :384], X_val[:, 384:]
 
     # Fit the scalers into the train data, return scalers for fitting of test and validation
-    audio_scaler, lyric_scaler = dataset_scaler(X_train_audio, X_train)
+    audio_scaler, lyric_scaler = dataset_scaler(X_train_audio, X_train_lyrics)
 
     # Transform the rest of the splits using the scalers
     X_train_audio = audio_scaler.transform(X_train_audio)
     X_test_audio = audio_scaler.transform(X_test_audio)
     X_val_audio = audio_scaler.transform(X_val_audio)
 
-    X_train = lyric_scaler.transform(X_train)
-    X_test = lyric_scaler.transform(X_test)
-    X_val = lyric_scaler.transform(X_val)
+    X_train_lyrics = lyric_scaler.transform(X_train_lyrics)
+    X_test_lyrics = lyric_scaler.transform(X_test_lyrics)
+    X_val_lyrics = lyric_scaler.transform(X_val_lyrics)
 
     # Fit PCA on TRAINING lyrics only
     ipca = IncrementalPCA(n_components=512)
     batch_size = 1000
 
-    for i in range(0, X_train.shape[0], batch_size):
-        ipca.partial_fit(X_train[i:i + batch_size])
+    for i in range(0, X_train_lyrics.shape[0], batch_size):
+        ipca.partial_fit(X_train_lyrics[i:i + batch_size])
 
     # Transform in batches
-    X_train = ipca.transform(X_train)
-    X_test = ipca.transform(X_test)
-    X_val = ipca.transform(X_val)
+    X_train_lyrics = ipca.transform(X_train_lyrics)
+    X_test_lyrics = ipca.transform(X_test_lyrics)
+    X_val_lyrics = ipca.transform(X_val_lyrics)
+
+    # Apply scaler to the PCA output
+    pca_lyric_scaler = StandardScaler().fit(X_train_lyrics)
+
+    X_train_lyrics = pca_lyric_scaler.transform(X_train_lyrics)
+    X_test_lyrics = pca_lyric_scaler.transform(X_test_lyrics)
+    X_val_lyrics = pca_lyric_scaler.transform(X_val_lyrics)
 
     # Concatenate them back to their original form, but scaled
-    X_train = np.concatenate([X_train_audio, X_train], axis=1)
-    X_test = np.concatenate([X_test_audio, X_test], axis=1)
-    X_val = np.concatenate([X_val_audio, X_val], axis=1)
+    X_train = np.concatenate([X_train_audio, X_train_lyrics], axis=1)
+    X_test = np.concatenate([X_test_audio, X_test_lyrics], axis=1)
+    X_val = np.concatenate([X_val_audio, X_val_lyrics], axis=1)
 
     joblib.dump(ipca, PCA_MODEL)
+    # Save the trained scalers for prediction
+    joblib.dump(pca_lyric_scaler, PCA_SCALER)
 
     data = {
         "train": (X_train, y_train),
@@ -267,10 +276,10 @@ def instance_scaler(audio: np.ndarray, lyrics: np.ndarray):
     """
 
     # Apply scalers to the single inputs
-    audio_scaler = joblib.load("models/fusion/audio_scaler.pkl")
-    lyric_scaler = joblib.load("models/fusion/lyric_scaler.pkl")
+    audio_scaler = joblib.load(AUDIO_SCALER)
+    lyric_scaler = joblib.load(LYRICS_SCALER)
 
     scaled_audio = audio_scaler.transform([audio])
-    scaleds = lyric_scaler.transform(lyrics)
+    scaled_lyric = lyric_scaler.transform(lyrics)
 
-    return scaled_audio, scaleds
+    return scaled_audio, scaled_lyric

@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from types import SimpleNamespace
 
+from src.spectttra.spectttra import SpecTTTra, build_spectttra_from_cfg, load_frozen_spectttra
 from src.spectttra.feature import FeatureExtractor
 from src.spectttra.spectttra import SpecTTTra
 
@@ -17,54 +18,10 @@ _DEVICE = None
 
 def build_spectttra(cfg, device):
     """
-    Initialize SpecTTTra and FeatureExtractor modules, and load a frozen checkpoint.
-
-    Args:
-        cfg (SimpleNamespace): Configuration containing audio, mel-spectrogram, and model parameters.
-        device (torch.device): Target device for model and feature extractor.
-
-    Returns:
-        tuple:
-            FeatureExtractor: Module for converting raw audio into mel-spectrogram features.
-            SpecTTTra: Spectro-temporal transformer model initialized with checkpoint weights.
+    Wrapper that builds SpecTTTra + FeatureExtractor and loads frozen checkpoint.
     """
-    feat_ext = FeatureExtractor(cfg).to(device)
-
-    # Build model once using placeholder input to infer mel and frame dimensions
-    with torch.no_grad():
-        dummy_wave = torch.zeros(1, cfg.audio.max_len, device=device)
-        dummy_mel = feat_ext(dummy_wave.float())
-    _, n_mels, n_frames = dummy_mel.shape
-
-    model_cfg = cfg.model
-    model = SpecTTTra(
-        input_spec_dim=n_mels,
-        input_temp_dim=n_frames,
-        embed_dim=model_cfg.embed_dim,
-        t_clip=model_cfg.t_clip,
-        f_clip=model_cfg.f_clip,
-        num_heads=model_cfg.num_heads,
-        num_layers=model_cfg.num_layers,
-        pre_norm=model_cfg.pre_norm,
-        pe_learnable=model_cfg.pe_learnable,
-        pos_drop_rate=model_cfg.pos_drop_rate,
-        attn_drop_rate=model_cfg.attn_drop_rate,
-        proj_drop_rate=model_cfg.proj_drop_rate,
-        mlp_ratio=model_cfg.mlp_ratio,
-    ).to(device)
-
-    # Load frozen checkpoint if it exists; otherwise, save initial state
-    ckpt_path = Path("models/spectttra/spectttra_frozen.pth")
-    if ckpt_path.exists():
-        state = torch.load(ckpt_path, map_location=device)
-        model.load_state_dict(state)
-        print(f"[INFO] Loaded frozen SpecTTTra checkpoint from {ckpt_path}")
-    else:
-        ckpt_path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(model.state_dict(), ckpt_path)
-        print(f"[INFO] Saved frozen SpecTTTra checkpoint to {ckpt_path}")
-
-    model.eval()
+    feat_ext, model = build_spectttra_from_cfg(cfg, device)
+    model = load_frozen_spectttra(model, "models/spectttra/spectttra_frozen.pth", device)
     return feat_ext, model
 
 
@@ -134,7 +91,7 @@ def _init_predictor_once():
         _DEVICE = device
 
 
-def spectttra_predict(audio_tensor):
+def spectttra_single(audio_tensor):
     """
     Run single-input inference with SpecTTTra.
 
@@ -176,7 +133,7 @@ def spectttra_predict(audio_tensor):
     return out
 
 
-def spectttra_train(audio_tensors):
+def spectttra_batch(audio_tensors):
     """
     Run batch input training with SpecTTTra.
 
@@ -219,3 +176,51 @@ def spectttra_train(audio_tensors):
         batch.append(pooled.cpu().numpy())
 
     return np.vstack(batch)
+
+def spectttra_stack(audio_tensors, max_batch_size: int = 100):
+    """
+    Vectorized inference over a list of waveforms, processed in chunks to cap GPU/CPU memory.
+
+    Args:
+        audio_tensors (list[torch.Tensor]): Each tensor shaped (1, num_samples) (batch dim first).
+        max_batch_size (int): Maximum number of waveforms to stack and process at once.
+
+    Returns:
+        np.ndarray: (N, embed_dim) embeddings in the same order as input.
+    """
+    global _FEAT_EXT, _MODEL, _CFG, _DEVICE
+
+    _init_predictor_once()
+
+    if not audio_tensors:
+        return np.empty((0, _CFG.model.embed_dim))
+
+    feat_ext = _FEAT_EXT
+    model = _MODEL
+    device = _DEVICE
+
+    embeddings = []
+
+    with torch.no_grad():
+        for start in range(0, len(audio_tensors), max_batch_size):
+            chunk = audio_tensors[start:start + max_batch_size]
+
+            # Basic shape check
+            for i, t in enumerate(chunk):
+                if t.dim() != 2 or t.size(0) != 1:
+                    raise ValueError(f"[NOTE] Expected each tensor shaped (1, num_samples); got {tuple(t.shape)} at index {start + i}")
+
+            waveform_batch = torch.cat(chunk, dim=0).to(device).float()  # (B, samples)
+            melspec = feat_ext(waveform_batch)  # (B, n_mels, n_frames)
+
+            if device.type == "cuda":
+                with torch.cuda.amp.autocast(enabled=True):
+                    tokens = model(melspec)          # (B, num_tokens, embed_dim)
+                    pooled = tokens.mean(dim=1)      # (B, embed_dim)
+            else:
+                tokens = model(melspec)
+                pooled = tokens.mean(dim=1)
+
+            embeddings.append(pooled.cpu())
+
+    return torch.cat(embeddings, dim=0).numpy()

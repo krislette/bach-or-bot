@@ -4,9 +4,7 @@ from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.models.mlp import build_mlp, load_config
 
-from src.utils.config_loader import DATASET_NPZ, PCA_MODEL
-from src.utils.dataset import dataset_scaler, dataset_splitter
-from sklearn.decomposition import PCA
+from src.utils.config_loader import DATASET_NPZ
 
 from pathlib import Path
 from src.utils.config_loader import DATASET_NPZ, RAW_DATASET_NPZ
@@ -14,7 +12,6 @@ from src.utils.dataset import scale_pca
 
 import numpy as np
 import logging
-import joblib
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -103,7 +100,6 @@ def train_pipeline():
     dataset_path = Path(RAW_DATASET_NPZ)
 
     if dataset_path.exists():
-        logger.info("Training dataset already exists. Loading file...")
         logger.info("Training dataset already exists. Loading file...")
 
         loaded_data = np.load(RAW_DATASET_NPZ)

@@ -39,12 +39,14 @@ COPY models/ ./models/
 COPY scripts/ ./scripts/
 
 # Create cache directories with proper permissions
-RUN mkdir -p /app/.cache/huggingface /tmp/numba_cache && \
+RUN mkdir -p /app/.cache/huggingface /app/.cache/torch /tmp/numba_cache && \
     chmod -R 777 /app/.cache /tmp/numba_cache
 
 # Set environment
 ENV PYTHONPATH="/app"
 ENV HF_HOME="/app/.cache/huggingface"
+ENV TRANSFORMERS_CACHE="/app/.cache/huggingface"
+ENV TORCH_HOME="/app/.cache/torch"
 ENV NUMBA_CACHE_DIR="/tmp/numba_cache"
 ENV NUMBA_DISABLE_JIT=0
 

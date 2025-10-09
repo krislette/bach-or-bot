@@ -39,7 +39,7 @@ class AudioPreprocessor:
 
     """
 
-    def __init__(self, script="train", waveform_norm="std"):
+    def __init__(self, script="train", waveform_norm="peak"):
         self.SCRIPT = script
         self.INPUT_SAMPLING = 48000
         self.TARGET_SAMPLING = 16000
@@ -71,7 +71,24 @@ class AudioPreprocessor:
                     audiofile = f"{audiofile}.mp3"
                 file = self.INPUT_PATH / audiofile
 
-                y, sr = librosa.load(str(file), sr=None, mono=False)
+                # FIXED: Force librosa to load properly
+                # Load at native sample rate first, then we will resample later
+                y, sr = librosa.load(str(file), sr=None, mono=False, dtype=np.float32)
+                
+                # If loading fails (all zeros), try with explicit sample rate
+                if np.abs(y).max() < 0.0001:
+                    print(f"Warning: First load failed, trying with sr=48000")
+                    y, sr = librosa.load(str(file), sr=48000, mono=False, dtype=np.float32)
+                
+                # Last resort: use soundfile instead
+                if np.abs(y).max() < 0.0001:
+                    print(f"Warning: Librosa failed, trying soundfile")
+                    import soundfile as sf
+                    y, sr = sf.read(str(file), dtype='float32')
+                    if y.ndim == 2:
+                        y = y.T  # soundfile returns (samples, channels)
+                    else:
+                        y = y[None, :]  # make it (1, samples)
 
             elif isinstance(audiofile, (bytes, io.BytesIO)):
                 file = (
@@ -90,13 +107,20 @@ class AudioPreprocessor:
             else:
                 raise ValueError(f"Unsupported audiofile type: {type(audiofile)}")
 
-            # Ensure consistent shape (channels, num_samples)
-            if y.ndim == 1:  # mono
-                y = y[None, :]  # (1, num_samples)
+            # Verify we actually loaded audio
+            if np.abs(y).max() < 0.0001:
+                raise RuntimeError(f"Audio file appears to be silent or corrupted: {audiofile}")
+
+            # Ensure consistent shape
+            if y.ndim == 1:
+                y = y[None, :]
             else:
-                y = y.T  # librosa returns (num_samples, channels)
+                y = y.T if y.shape[0] > y.shape[1] else y
 
             waveform = torch.from_numpy(y).float()
+            
+            print(f"Successfully loaded: range [{y.min():.6f}, {y.max():.6f}], mean abs: {np.abs(y).mean():.6f}")
+            
             return waveform, sr
 
         except Exception as e:
@@ -121,9 +145,7 @@ class AudioPreprocessor:
             Resampled audio waveform at `TARGET_SAMPLING`.
         """
         if original_sr != self.TARGET_SAMPLING:
-            print(
-                f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}."
-            )
+            #print(f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}.")
             waveform = AF.resample(
                 waveform, orig_freq=original_sr, new_freq=self.TARGET_SAMPLING
             )
@@ -182,7 +204,11 @@ class AudioPreprocessor:
         waveform : tensor
             Normalized audio waveform.
         """
-        if method == "std":
+        if method == "peak":
+            # Normalize to [-1, 1] based on max absolute value to preserves relative dynamics
+            peak = waveform.abs().max()
+            return waveform / max(peak, 1e-6)
+        elif method == "std":
             std = waveform.std()
             return waveform / max(std, 1e-6)
         elif method == "minmax":
@@ -202,8 +228,8 @@ class AudioPreprocessor:
             Base filename to use.
         """
         self.OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
-        print(f"Saving {filename} to {self.OUTPUT_PATH}.")
-
+        #print(f"Saving {filename} to {self.OUTPUT_PATH}.")
+        
         output_path = self.OUTPUT_PATH / f"{filename}"
 
         torchaudio.save(str(output_path), waveform, self.TARGET_SAMPLING)
@@ -233,7 +259,7 @@ class AudioPreprocessor:
 
         # Convert the audio into mono
         if waveform.shape[0] > 1:
-            print("Current audio is stereo. Converting to mono.")
+            #print("Current audio is stereo. Converting to mono.")
             waveform = waveform.mean(dim=0, keepdim=True)
 
         # If there is a skip value provided, trim it
@@ -245,7 +271,7 @@ class AudioPreprocessor:
         # Trim if more than 120 seconds, pad if less than
         waveform = self.pad_trim(waveform=waveform, random_crop=train)
 
-        # Normalize waveform (aligned with SONICS)
+        # Normalize waveform (used PEAK)
         waveform = self.normalize_waveform(waveform, method=self.WAVEFORM_NORM)
 
         # Add some gaussian noise to the waveform during training

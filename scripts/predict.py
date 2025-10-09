@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 
-def predict_pipeline(audio_file, lyrics: str):
+def predict_pipeline(audio_file, lyrics, l2v):
     """
     Predict script which includes preprocessing, feature extraction, and
     training the MLP model for a single data sample.
@@ -31,15 +31,12 @@ def predict_pipeline(audio_file, lyrics: str):
         A numerical representation of the prediction
     """
 
-    # Instantiate LLM2Vec Model
-    llm2vec_model = load_llm2vec_model()
-
     # Preprocess both audio and lyrics
     audio, lyrics = single_preprocessing(audio_file, lyrics)
 
     # Call the train method for both models
     audio_features = spectttra_predict(audio)
-    lyrics_features = l2vec_single_train(llm2vec_model, lyrics)
+    lyrics_features = l2vec_single_train(l2v, lyrics)
 
     # Scale the vectors using Z-Score
     audio_features, lyrics_features = instance_scaler(audio_features, lyrics_features)
@@ -70,15 +67,18 @@ def predict_pipeline(audio_file, lyrics: str):
         "prediction": "Fake" if probability < 0.5 else "Real"
     }
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     # Example usage (replace with real inputs, place song inside data/raw.)
     data = pd.read_csv("data/raw/predict_data_final.csv")
+
+    # Instantiate LLM2Vec Model
+    llm2vec_model = load_llm2vec_model()
 
     result = []
     label = []
     for row in data.itertuples():
         label.append(row.label)
-        result.append(predict_pipeline(row.song, row.lyrics))
+        result.append(predict_pipeline(row.song, row.lyrics, llm2vec_model))
 
     for i in range(len(result)):
         print(f"Song: {result[i]["song"]}")

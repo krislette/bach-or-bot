@@ -41,6 +41,8 @@ COPY scripts/ ./scripts/
 # Set environment
 ENV PYTHONPATH="/app"
 ENV HF_HOME="/app/.cache/huggingface"
+ENV NUMBA_CACHE_DIR="/tmp/numba_cache"
+ENV NUMBA_DISABLE_JIT=0
 
 # Hugging Face Spaces specific, expose port 7860
 EXPOSE 7860

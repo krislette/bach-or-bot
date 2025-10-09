@@ -83,7 +83,7 @@ def _init_predictor_once():
         _FEAT_EXT, _MODEL, _CFG, _DEVICE = feat_ext, model, cfg, device
 
 
-def spectttra_single(audio_tensor):
+def spectttra_predict(audio_tensor):
     """
     Run single-input inference with SpecTTTra.
 
@@ -133,7 +133,7 @@ def spectttra_single(audio_tensor):
     return out
 
 
-def spectttra_batch(audio_tensors):
+def spectttra_train(audio_tensors):
     """
     Run batch input training with SpecTTTra.
 
@@ -165,7 +165,7 @@ def spectttra_batch(audio_tensors):
         waveforms_batch = torch.cat(audio_tensors, dim=0).to(device).float()
     except Exception as e:
         print(f"[INFO] Error during tensor concatenation, falling back to loop. Fix preprocessing for speed. Error: {e}")
-        batch_list = [spectttra_single(w) for w in audio_tensors]
+        batch_list = [spectttra_predict(w) for w in audio_tensors]
         return np.array(batch_list)
 
     with torch.no_grad():

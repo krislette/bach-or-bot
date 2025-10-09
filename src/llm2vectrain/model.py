@@ -4,16 +4,22 @@ from peft import PeftModel
 from src.llm2vectrain.config import access_token
 import torch
 from torchao.quantization import quantize_, Int8WeightOnlyConfig
+import os
 
 
 def load_llm2vec_model():
+    # Get cache directory from environment or use default
+    cache_dir = os.getenv("TRANSFORMERS_CACHE", "/app/.cache/huggingface")
 
     model_id = "McGill-NLP/LLM2Vec-Sheared-LLaMA-mntp"
 
     tokenizer = AutoTokenizer.from_pretrained(
-        model_id, padding=True, truncation=True, max_length=512
+        model_id, padding=True, truncation=True, max_length=512, cache_dir=cache_dir
     )
-    config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+
+    config = AutoConfig.from_pretrained(
+        model_id, trust_remote_code=True, cache_dir=cache_dir
+    )
 
     if torch.cuda.is_available():
         # GPU path: use bf16 for speed
@@ -24,6 +30,7 @@ def load_llm2vec_model():
             torch_dtype=torch.bfloat16,
             device_map="cuda",
             token=access_token,
+            cache_dir=cache_dir,
         )
     else:
         # CPU path: use float32 first, then quantize
@@ -34,6 +41,7 @@ def load_llm2vec_model():
             torch_dtype=torch.float32,  # quantization requires fp32
             device_map="cpu",
             token=access_token,
+            cache_dir=cache_dir,
         )
 
     try:

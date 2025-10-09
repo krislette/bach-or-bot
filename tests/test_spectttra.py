@@ -10,8 +10,8 @@ from src.utils.config_loader import RAW_DIR
 from src.preprocessing.audio_preprocessor import AudioPreprocessor
 from src.spectttra.spectttra_trainer import (
     _init_predictor_once,
-    spectttra_single,
-    spectttra_batch,
+    spectttra_predict,
+    spectttra_train,
 )
 
 
@@ -90,15 +90,15 @@ def main(n_files: int = 15, repeat: int = 5):
     print("[STATUS] Initialized predictor once")
 
     # Time spectttra_single on first waveform
-    print("\n[PROCESS] Timing spectttra_single() on single waveform")
+    print("\n[PROCESS] Timing spectttra_predict() on single waveform")
     single = processed_waveforms[0]
-    out_single, t_single = time_func(spectttra_single, single, repeat=repeat)
-    print(f"[RESULTS] spectttra_single avg: {t_single:.4f}s, embedding shape: {out_single.shape}")
+    out_single, t_single = time_func(spectttra_predict, single, repeat=repeat)
+    print(f"[RESULTS] spectttra_predict avg: {t_single:.4f}s, embedding shape: {out_single.shape}")
 
     # Time spectttra_batch on the batch of up to n_files
-    print(f"\n[PROCESS] Timing spectttra_batch() on batch of {len(processed_waveforms)} waveforms")
-    out_batch, t_batch = time_func(spectttra_batch, processed_waveforms, repeat=repeat)
-    print(f"[RESULTS] spectttra_batch avg: {t_batch:.4f}s, embeddings shape: {out_batch.shape}")
+    print(f"\n[PROCESS] Timing spectttra_train() on batch of {len(processed_waveforms)} waveforms")
+    out_batch, t_batch = time_func(spectttra_train, processed_waveforms, repeat=repeat)
+    print(f"[RESULTS] spectttra_train avg: {t_batch:.4f}s, embeddings shape: {out_batch.shape}")
 
     # Quick checks
     assert out_batch.shape[0] == len(processed_waveforms), "[ERROR] Batch output not aligned with inputs"

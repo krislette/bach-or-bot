@@ -1,12 +1,10 @@
 import threading
 import torch
 import numpy as np
-from pathlib import Path
 from types import SimpleNamespace
 
-from src.spectttra.spectttra import SpecTTTra, build_spectttra_from_cfg, load_frozen_spectttra
 from src.spectttra.feature import FeatureExtractor
-from src.spectttra.spectttra import SpecTTTra
+from src.spectttra.spectttra import SpecTTTra, build_spectttra_from_cfg, load_frozen_spectttra
 
 # Shared variables for the model and setup, loaded only once and reused (cache)
 _PREDICTOR_LOCK = threading.Lock()
@@ -75,20 +73,14 @@ def _init_predictor_once():
         )
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         feat_ext, model = build_spectttra(cfg, device)
-
         feat_ext.to(device)
 
         # Move model to device (GPU if available) and allow faster inference with mixed precision
-        model.to(device)
-        model.eval()
+        model.to(device).eval()
 
         # Cache
-        _FEAT_EXT = feat_ext
-        _MODEL = model
-        _CFG = cfg
-        _DEVICE = device
+        _FEAT_EXT, _MODEL, _CFG, _DEVICE = feat_ext, model, cfg, device
 
 
 def spectttra_single(audio_tensor):
@@ -104,6 +96,7 @@ def spectttra_single(audio_tensor):
             1D embedding vector of shape (embed_dim,). The embedding is obtained
             by mean-pooling the transformer token outputs.
     """
+
     global _FEAT_EXT, _MODEL, _CFG, _DEVICE
 
     _init_predictor_once()
@@ -118,18 +111,25 @@ def spectttra_single(audio_tensor):
 
     with torch.no_grad():
         # Extract mel-spectrogram
-        melspec = feat_ext(waveform)        # (B, n_mels, n_frames)
+        melspec = feat_ext(waveform)
+
+        # Ensure melspec shape matches model's expectation ---
+        expected_frames = model.input_temp_dim  # expected_frames is 3744
+        if melspec.shape[2] > expected_frames:
+            melspec = melspec[:, :, :expected_frames]
+        elif melspec.shape[2] < expected_frames:
+            padding = expected_frames - melspec.shape[2]
+            melspec = torch.nn.functional.pad(melspec, (0, padding))
 
         if device.type == "cuda":
             with torch.cuda.amp.autocast(enabled=True):
-                tokens = model(melspec)     # (B, num_tokens, embed_dim)
-                pooled = tokens.mean(dim=1) # (B, embed_dim)
+                tokens = model(melspec)
+                pooled = tokens.mean(dim=1)
         else:
             tokens = model(melspec)
             pooled = tokens.mean(dim=1)
 
-    # Return numpy vector
-    out = pooled.squeeze(0).cpu().numpy()   # (embed_dim,)
+    out = pooled.squeeze(0).cpu().numpy()
     return out
 
 
@@ -160,67 +160,31 @@ def spectttra_batch(audio_tensors):
     model = _MODEL
     device = _DEVICE
 
-    batch = []
-    for waveform in audio_tensors:
-        with torch.no_grad():
-            melspec = feat_ext(waveform.float())    # (B, n_mels, n_frames)
-
-            if device.type == "cuda":
-                with torch.cuda.amp.autocast(enabled=True):
-                    tokens = model(melspec)         # (B, num_tokens, embed_dim)
-                    pooled = tokens.mean(dim=1)     # (B, embed_dim)
-            else:
-                tokens = model(melspec)
-                pooled = tokens.mean(dim=1)
-        
-        batch.append(pooled.cpu().numpy())
-
-    return np.vstack(batch)
-
-def spectttra_stack(audio_tensors, max_batch_size: int = 100):
-    """
-    Vectorized inference over a list of waveforms, processed in chunks to cap GPU/CPU memory.
-
-    Args:
-        audio_tensors (list[torch.Tensor]): Each tensor shaped (1, num_samples) (batch dim first).
-        max_batch_size (int): Maximum number of waveforms to stack and process at once.
-
-    Returns:
-        np.ndarray: (N, embed_dim) embeddings in the same order as input.
-    """
-    global _FEAT_EXT, _MODEL, _CFG, _DEVICE
-
-    _init_predictor_once()
-
-    if not audio_tensors:
-        return np.empty((0, _CFG.model.embed_dim))
-
-    feat_ext = _FEAT_EXT
-    model = _MODEL
-    device = _DEVICE
-
-    embeddings = []
+    # Refactors the loop to be a much faster single-batch operation
+    try:
+        waveforms_batch = torch.cat(audio_tensors, dim=0).to(device).float()
+    except Exception as e:
+        print(f"[INFO] Error during tensor concatenation, falling back to loop. Fix preprocessing for speed. Error: {e}")
+        batch_list = [spectttra_single(w) for w in audio_tensors]
+        return np.array(batch_list)
 
     with torch.no_grad():
-        for start in range(0, len(audio_tensors), max_batch_size):
-            chunk = audio_tensors[start:start + max_batch_size]
+        melspec = feat_ext(waveforms_batch)
 
-            # Basic shape check
-            for i, t in enumerate(chunk):
-                if t.dim() != 2 or t.size(0) != 1:
-                    raise ValueError(f"[NOTE] Expected each tensor shaped (1, num_samples); got {tuple(t.shape)} at index {start + i}")
+        # Ensure melspec shape matches model's expectation 
+        expected_frames = model.input_temp_dim # expected_frames is 3744
+        if melspec.shape[2] > expected_frames:
+            melspec = melspec[:, :, :expected_frames]
+        elif melspec.shape[2] < expected_frames:
+            padding = expected_frames - melspec.shape[2]
+            melspec = torch.nn.functional.pad(melspec, (0, padding))
 
-            waveform_batch = torch.cat(chunk, dim=0).to(device).float()  # (B, samples)
-            melspec = feat_ext(waveform_batch)  # (B, n_mels, n_frames)
-
-            if device.type == "cuda":
-                with torch.cuda.amp.autocast(enabled=True):
-                    tokens = model(melspec)          # (B, num_tokens, embed_dim)
-                    pooled = tokens.mean(dim=1)      # (B, embed_dim)
-            else:
+        if device.type == "cuda":
+            with torch.cuda.amp.autocast(enabled=True):
                 tokens = model(melspec)
                 pooled = tokens.mean(dim=1)
+        else:
+            tokens = model(melspec)
+            pooled = tokens.mean(dim=1)
 
-            embeddings.append(pooled.cpu())
-
-    return torch.cat(embeddings, dim=0).numpy()
+    return pooled.cpu().numpy()

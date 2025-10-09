@@ -49,6 +49,8 @@ ENV TRANSFORMERS_CACHE="/app/.cache/huggingface"
 ENV TORCH_HOME="/app/.cache/torch"
 ENV NUMBA_CACHE_DIR="/tmp/numba_cache"
 ENV NUMBA_DISABLE_JIT=0
+ENV MUSICLIME_NUM_SAMPLES=1000
+ENV MUSICLIME_NUM_FEATURES=10
 
 # Hugging Face Spaces specific, expose port 7860
 EXPOSE 7860

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 
-def predict_pipeline(audio_file, lyrics: str):
+def predict_pipeline(audio_file, lyrics):
     """
     Predict script which includes preprocessing, feature extraction, and
     training the MLP model for a single data sample.
@@ -65,12 +65,11 @@ def predict_pipeline(audio_file, lyrics: str):
     # Run prediction
     probability = classifier.predict_single(results.flatten())
     return {
-        "song": audio_file,
         "probability": probability,
         "prediction": "Fake" if probability < 0.5 else "Real"
     }
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     # Example usage (replace with real inputs, place song inside data/raw.)
     data = pd.read_csv("data/raw/predict_data_final.csv")
 

@@ -119,8 +119,6 @@ class AudioPreprocessor:
 
             waveform = torch.from_numpy(y).float()
             
-            print(f"Successfully loaded: range [{y.min():.6f}, {y.max():.6f}], mean abs: {np.abs(y).mean():.6f}")
-            
             return waveform, sr
 
         except Exception as e:

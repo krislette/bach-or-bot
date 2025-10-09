@@ -54,7 +54,7 @@ class MusicLIMEPredictor:
 
         # Load the trained scalers
         audio_scaler = joblib.load("models/fusion/audio_scaler.pkl")
-        lyric_scaler = joblib.load("models/fusion/lyric_scaler.pkl")
+        lyric_scaler = joblib.load("models/fusion/lyrics_scaler.pkl")
 
         # Then apply scaling to the batch
         scaled_audio_batch = audio_scaler.transform(
@@ -62,21 +62,28 @@ class MusicLIMEPredictor:
         )  # (batch, 384)
         scaled_lyrics_batch = lyric_scaler.transform(
             lyrics_features_batch
-        )  # (batch, 4096)
+        )  # (batch, 2048)
 
         # Step 4: Apply PCA to lyrics batch
         print("[MusicLIME] Applying PCA to lyrics (batch)")
         pca_model = joblib.load("models/fusion/pca.pkl")
         reduced_lyrics_batch = pca_model.transform(
             scaled_lyrics_batch
-        )  # (batch, 256 or however small the scaler makes it to be)
+        )  # (batch, 512)
 
-        # Step 5: Concatenate features
+        # Step 5: Apply scaler to PCA-scaled lyrics batch
+        print("[MusicLIME] Reapplying scaler to PCA-scaled batch")
+        pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
+        reduced_lyrics_batch = pca_scaler.transform(
+            reduced_lyrics_batch
+        ) # (batch, 512)
+
+        # Step 6: Concatenate features
         combined_features_batch = np.concatenate(
             [scaled_audio_batch, reduced_lyrics_batch], axis=1
         )  # (batch, sum of lyrics & audio vector dims)
 
-        # Step 4: BATCH MLP prediction
+        # Step 6: BATCH MLP prediction
         print("[MusicLIME] Running MLP predictions (batch)...")
         if self.classifier is None:
             self.classifier = build_mlp(

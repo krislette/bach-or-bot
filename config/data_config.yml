@@ -1,8 +1,12 @@
 base_dir: "."
 
 paths:
-  dataset_npz: "data/processed/training_data.npz"
-  dataset_csv: "data/external/songs_dataset.csv"
+  dataset_npz: "data/processed/training_data_40k.npz"
+  dataset_csv: "data/external/dataset_40000.csv"
   raw_dir: "data/raw"
   processed_dir: "data/processed"
-  pca_path: "data/processed/pca_model.pkl"
+  pca_path: "models/fusion/pca.pkl"
+  lyrics_scaler: "models/fusion/lyrics_scaler.pkl"
+  pca_scaler: "models/fusion/pca_scaler.pkl"
+  audio_scaler: "models/fusion/audio_scaler.pkl"
+  raw_dataset_npz: "data/processed/raw_training_data_40k.npz"

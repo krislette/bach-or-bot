@@ -56,4 +56,4 @@ ENV MUSICLIME_NUM_FEATURES=10
 EXPOSE 7860
 
 # Run on port 7860 for HF Spaces
-CMD ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "7860", "--timeout-keep-alive", "600"]

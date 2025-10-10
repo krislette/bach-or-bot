@@ -2,11 +2,11 @@ from src.preprocessing.preprocessor import single_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_predict
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_single_train, load_pca_model
-from src. llm2vectrain.flask import request_llm2vect_single
 from src.models.mlp import build_mlp, load_config
 from pathlib import Path
 from src.utils.config_loader import DATASET_NPZ
 from src.utils.dataset import instance_scaler
+from scripts.flask import request_llm2vect_single
 
 from pathlib import Path
 import numpy as np

@@ -161,7 +161,7 @@ temp/
 *.tmp
 *.temp
 src/llm2vectrain/access_token.py
-src/llm2vectrain/colab_url.py
+scripts/colab_url.py
 
 # Virtual env
 .venv312

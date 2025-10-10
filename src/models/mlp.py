@@ -723,17 +723,6 @@ class MLPClassifier:
         total_params = sum(p.numel() for p in self.model.parameters())
         logger.info(f"Total parameters: {total_params:,}")
 
-    def predict_single(self, features: np.ndarray) -> float:
-        """Predict probability for a single sample."""
-        if not self.is_trained:
-            raise ValueError("Model must be trained before prediction")
-
-        self.model.eval()
-        with torch.no_grad():
-            features_tensor = torch.FloatTensor(features).unsqueeze(0).to(self.device)
-            output = self.model(features_tensor)
-            return float(output.cpu().numpy()[0])
-
 
 def build_mlp(input_dim: int, config: Dict) -> MLPClassifier:
     """

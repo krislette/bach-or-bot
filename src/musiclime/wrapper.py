@@ -12,6 +12,12 @@ from src.musiclime.print_utils import green_bold
 
 class MusicLIMEPredictor:
     def __init__(self):
+        """
+        Initialize MusicLIME prediction wrapper with pre-trained models.
+
+        Loads LLM2Vec model and MLP configuration for batch processing
+        of perturbed audio-lyrics pairs during LIME explanation.
+        """
         print("[MusicLIME] Loading models for MusicLIME...")
         self.llm2vec_model = load_llm2vec_model()
         config = load_config("config/model_config.yml")
@@ -20,14 +26,24 @@ class MusicLIMEPredictor:
 
     def __call__(self, texts, audios):
         """
-        Predict function for MusicLIME
+        Batch prediction function for MusicLIME perturbations.
 
-        Args:
-            texts: List of lyric strings
-            audios: Array of audio waveforms
+        Processes multiple perturbed audio-lyrics pairs through the complete
+        pipeline: preprocessing -> feature extraction -> scaling -> MLP prediction.
+        Optimized for batch processing of LIME perturbations.
 
-        Returns:
-            Array of prediction probabilities
+        Parameters
+        ----------
+        texts : list of str
+            List of perturbed lyrics strings from LIME
+        audios : list of array-like
+            List of perturbed audio waveforms from LIME
+
+        Returns
+        -------
+        ndarray
+            Prediction probabilities in format [[P(AI), P(Human)], ...]
+            for each input pair, shape (n_samples, 2)
         """
         print(f"[MusicLIME] Processing {len(texts)} samples with batch functions...")
 

@@ -2,10 +2,6 @@
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-# Processing imports
-import librosa
-import io
-
 # Utils/schemas imports
 from app.schemas import (
     ErrorResponse,
@@ -14,11 +10,16 @@ from app.schemas import (
     PredictionXAIResponse,
     WelcomeResponse,
 )
-from app.utils import load_config
+from app.utils import load_config, download_youtube_audio
 
 # Model/XAI-related imports
 from scripts.explain import musiclime
 from scripts.predict import predict_pipeline
+
+# Other imports
+import io
+import librosa
+from typing import Optional, Tuple
 
 
 # Load config at startup
@@ -43,28 +44,6 @@ app.add_middleware(
 )
 
 
-async def validate_audio_file(audio_file: UploadFile = File(...)):
-    """Validate audio file type and size."""
-    # Check file size
-    audio_content = await audio_file.read()
-    if len(audio_content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.",
-        )
-
-    # Check file type
-    if audio_file.content_type not in ALLOWED_AUDIO_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type. Supported formats: {', '.join(ALLOWED_AUDIO_TYPES)}",
-        )
-
-    # Reset file pointer for later use
-    audio_file.file.seek(0)
-    return audio_file, audio_content
-
-
 def validate_lyrics(lyrics: str = Form(...)):
     """Validate lyrics length and content."""
     if len(lyrics) > MAX_LYRICS_LENGTH:
@@ -82,6 +61,46 @@ def validate_lyrics(lyrics: str = Form(...)):
         )
 
     return lyrics
+
+
+async def validate_audio_source(
+    audio_file: Optional[UploadFile] = File(None),
+    youtube_url: Optional[str] = Form(None),
+) -> Tuple[Optional[bytes], str, str]:
+    """
+    Validate and process audio source (either file or YouTube URL).
+    Returns: (audio_content, file_name, content_type)
+    """
+    if not audio_file and not youtube_url:
+        raise HTTPException(
+            status_code=400, detail="Either audio_file or youtube_url must be provided"
+        )
+
+    if audio_file and youtube_url:
+        raise HTTPException(
+            status_code=400, detail="Provide either audio_file or youtube_url, not both"
+        )
+
+    # Process YouTube URL
+    if youtube_url:
+        audio_content = download_youtube_audio(youtube_url)
+        return audio_content, "youtube_audio.wav", "audio/wav"
+
+    # Process uploaded file
+    if audio_file.content_type not in ALLOWED_AUDIO_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Supported formats: {', '.join(ALLOWED_AUDIO_TYPES)}",
+        )
+
+    audio_content = await audio_file.read()
+    if len(audio_content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.",
+        )
+
+    return audio_content, audio_file.filename, audio_file.content_type
 
 
 @app.get("/", response_model=WelcomeResponse, tags=["Root"])
@@ -108,32 +127,36 @@ def root():
     responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
 async def predict_music(
-    lyrics: str = Depends(validate_lyrics), audio_file_data=Depends(validate_audio_file)
+    lyrics: str = Depends(validate_lyrics),
+    audio_data_tuple: Tuple = Depends(validate_audio_source),
 ):
     """
     Endpoint to predict whether a music sample is human-composed or AI-generated.
+    Accepts either an audio file upload or a YouTube URL.
     """
     try:
-        # Get the audio file and content from sanitized and cleaned audio file
-        audio_file, audio_content = audio_file_data
+        # Unpack validated data
+        audio_content, audio_file_name, audio_content_type = audio_data_tuple
 
-        # Load audio from uploaded file with error handling for corrupted files
+        # Load audio with librosa
         try:
             audio_data, sr = librosa.load(io.BytesIO(audio_content))
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid audio file: {str(e)}")
 
-        # Call MLP predict runner script to get results
+        # Call MLP predict runner script
         results = predict_pipeline(audio_data, lyrics)
 
         return PredictionResponse(
             status="success",
             lyrics=lyrics,
-            audio_file_name=audio_file.filename,
-            audio_content_type=audio_file.content_type,
+            audio_file_name=audio_file_name,
+            audio_content_type=audio_content_type,
             audio_file_size=len(audio_content),
             results=results,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -144,32 +167,36 @@ async def predict_music(
     responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
 async def predict_music_with_xai(
-    lyrics: str = Depends(validate_lyrics), audio_file_data=Depends(validate_audio_file)
+    lyrics: str = Depends(validate_lyrics),
+    audio_data_tuple: Tuple = Depends(validate_audio_source),
 ):
     """
     Endpoint to predict whether a music sample is human-composed or AI-generated with explainability.
+    Accepts either an audio file upload or a YouTube URL.
     """
     try:
-        # Get the audio file and content from sanitized and cleaned audio file
-        audio_file, audio_content = audio_file_data
+        # Unpack validated data
+        audio_content, audio_file_name, audio_content_type = audio_data_tuple
 
-        # Load audio from uploaded file with error handling for corrupted files
+        # Load audio with librosa
         try:
             audio_data, sr = librosa.load(io.BytesIO(audio_content))
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid audio file: {str(e)}")
 
-        # Call musiclime runner script to get results
+        # Call musiclime runner script
         results = musiclime(audio_data, lyrics)
 
         return PredictionXAIResponse(
             status="success",
             lyrics=lyrics,
-            audio_file_name=audio_file.filename,
-            audio_content_type=audio_file.content_type,
+            audio_file_name=audio_file_name,
+            audio_content_type=audio_content_type,
             audio_file_size=len(audio_content),
             results=results,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

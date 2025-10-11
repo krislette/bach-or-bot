@@ -15,6 +15,21 @@ from src.musiclime.print_utils import green_bold
 
 
 class MusicLIMEExplainer:
+    """
+    LIME-based explainer for multimodal music classification models.
+
+    Generates local explanations for AI vs Human music classification by
+    perturbing audio (source separation) and lyrics (line removal) components
+    and analyzing their impact on model predictions.
+
+    Attributes
+    ----------
+    random_state : RandomState
+        Random number generator for reproducible perturbations
+    base : LimeBase
+        Core LIME explanation engine with exponential kernel
+    """
+
     def __init__(self, kernel_width=25, random_state=None):
         """
         Initialize MusicLIME explainer with kernel parameters.
@@ -248,6 +263,33 @@ class MusicLIMEExplainer:
 
 
 class MusicLIMEExplanation:
+    """
+    Container for MusicLIME explanation results and analysis methods.
+
+    Stores factorizations, perturbation data, and LIME-fitted explanations
+    for a single music instance. Provides methods to extract top features
+    and export results to structured formats.
+
+    Attributes
+    ----------
+    audio_factorization : OpenUnmixFactorization
+        Audio source separation components
+    text_factorization : LineIndexedString
+        Lyrics line segmentation components
+    data : ndarray
+        Binary perturbation masks used for explanation
+    predictions : ndarray
+        Model predictions for all perturbations
+    intercept : dict
+        LIME model intercepts by label
+    local_exp : dict
+        Feature importance weights by label
+    score : dict
+        LIME model R² scores by label
+    local_pred : dict
+        Local model predictions by label
+    """
+
     def __init__(self, audio_factorization, text_factorization, data, predictions):
         """
         Initialize explanation object with factorizations and prediction data.

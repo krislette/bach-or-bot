@@ -11,6 +11,24 @@ from src.musiclime.print_utils import green_bold
 
 
 class MusicLIMEPredictor:
+    """
+    Batch prediction wrapper for MusicLIME explanations.
+
+    Integrates the complete Bach or Bot pipeline (SpecTTTra + LLM2Vec + MLP)
+    into a single callable for LIME perturbation processing. Optimized for
+    batch processing of multiple perturbed audio-lyrics pairs with detailed
+    timing analysis.
+
+    Attributes
+    ----------
+    llm2vec_model : LLM2Vec
+        Pre-loaded LLM2Vec model for lyrics feature extraction
+    classifier : MLPClassifier
+        Lazy-loaded MLP classifier for final predictions
+    config : dict
+        Model configuration parameters
+    """
+
     def __init__(self):
         """
         Initialize MusicLIME prediction wrapper with pre-trained models.

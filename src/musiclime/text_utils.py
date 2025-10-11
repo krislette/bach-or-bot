@@ -4,6 +4,25 @@ from lime.lime_text import IndexedString
 
 
 class LineIndexedString(IndexedString):
+    """
+    Line-based text indexing for lyrics perturbation in MusicLIME.
+
+    Extends LIME's IndexedString to work with lyrics lines instead of words,
+    to enable more meaningful perturbations for song lyrics. Filters out
+    metadata and focuses on actual lyrical content.
+
+    Attributes
+    ----------
+    raw : str
+        Original raw lyrics text
+    as_list : list of str
+        Processed lyrics lines without metadata
+    as_np : ndarray
+        NumPy array of lyrics lines
+    positions : list of int
+        Line position indices for LIME compatibility
+    """
+
     def __init__(self, raw_string, bow=True, mask_string=None):
         """
         Initialize line-based text indexing for lyrics perturbation in MusicLIME.

@@ -6,6 +6,29 @@ from src.musiclime.print_utils import green_bold
 
 
 class OpenUnmixFactorization:
+    """
+    Audio factorization using OpenUnmix source separation with temporal segmentation.
+
+    Decomposes audio into interpretable components by separating sources
+    (vocals, bass, drums, other) and segmenting each across time windows.
+    Creates temporal-source combinations for fine-grained audio explanations.
+
+    Attributes
+    ----------
+    audio : ndarray
+        Original audio waveform
+    temporal_segments : list of tuple
+        Time window boundaries for segmentation
+    original_components : list of ndarray
+        Raw separated audio sources
+    component_names : list of str
+        Names of separated sources
+    components : list of ndarray
+        Final temporal-source component combinations
+    final_component_names : list of str
+        Names of temporal-source combinations
+    """
+
     def __init__(self, audio, temporal_segmentation_params=10, composition_fn=None):
         """
         Initialize audio factorization using OpenUnmix source separation with temporal segmentation.

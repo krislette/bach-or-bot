@@ -31,12 +31,16 @@ def predict_pipeline(audio_file, lyrics):
     label : int
         A numerical representation of the prediction
     """
-
     # 1.) Instantiate LLM2Vec Model
     llm2vec_model = load_llm2vec_model()
 
     # 2.) Preprocess both audio and lyrics
     audio, lyrics = single_preprocessing(audio_file, lyrics)
+
+    # Truncate to 2 minutes to match explain pipeline
+    target_samples = int(2 * 60 * 22050)
+    if len(audio) > target_samples:
+        audio = audio[:target_samples]
 
     # 3.) Call the train method for both models
     audio_features = spectttra_predict(audio)
@@ -59,7 +63,7 @@ def predict_pipeline(audio_file, lyrics):
     config = load_config("config/model_config.yml")
     classifier = build_mlp(input_dim=results.shape[1], config=config)
 
-    # 7.) Load trained weights (make sure this path matches where you saved your model)
+    # 7.) Load trained weights
     model_path = "models/mlp/mlp_best.pth"
     classifier.load_model(model_path)
     classifier.model.eval()

@@ -91,7 +91,7 @@ data/.tmp.driveupload/
 *.tsv
 *.xlsx
 *.xls
-# *.json
+*.json
 *.xml
 *.sqlite
 *.db
@@ -100,15 +100,15 @@ data/.tmp.driveupload/
 *.parquet
 
 # Model files
-# models/
-# *.pkl
+models/
+*.pkl
 *.pickle
 *.joblib
 *.model
 *.h5
 *.hdf5
 *.pb
-# *.pth
+*.pth
 *.pt
 *.onnx
 *.tflite

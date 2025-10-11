@@ -31,35 +31,35 @@ def predict_pipeline(audio_file, lyrics):
         A numerical representation of the prediction
     """
 
-    # Instantiate LLM2Vec Model
+    # 1.) Instantiate LLM2Vec Model
     llm2vec_model = load_llm2vec_model()
 
-    # Preprocess both audio and lyrics
+    # 2.) Preprocess both audio and lyrics
     audio, lyrics = single_preprocessing(audio_file, lyrics)
 
-    # Call the train method for both models
+    # 3.) Call the train method for both models
     audio_features = spectttra_predict(audio)
     lyrics_features = l2vec_single_train(llm2vec_model, lyrics)
 
-    # Scale the vectors using Z-Score
+    # 4.) Scale the vectors using Z-Score
     audio_features, lyrics_features = instance_scaler(audio_features, lyrics_features)
 
-    # Reduce the lyrics using saved PCA model
+    # 5.) Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)
 
-    # Concatenate the vectors of audio_features + lyrics_features
+    # 6.) Concatenate the vectors of audio_features + lyrics_features
     results = np.concatenate([audio_features, reduced_lyrics], axis=1)
 
     # ---- Load MLP Classifier ----
     config = load_config("config/model_config.yml")
     classifier = build_mlp(input_dim=results.shape[1], config=config)
 
-    # Load trained weights (make sure this path matches where you saved your model)
+    # 7.) Load trained weights (make sure this path matches where you saved your model)
     model_path = "models/mlp/mlp_multimodal.pth"
     classifier.load_model(model_path)
     classifier.model.eval()
 
-    # Run prediction
+    # 8.) Run prediction
     probability, prediction, label = classifier.predict_single(results.flatten())
 
     return {
@@ -87,5 +87,5 @@ if __name__ == "__main__":
         print(f"Song: {r['song']}")
         print(f"Actual Label: {r['label']}")
         print(f"Predicted: {r['predicted_label']}")
-        print(f"Confidence: {r['probability']:.4f}")
+        print(f"Confidence: {r['probability']: .8f}%")
         print("-" * 50)

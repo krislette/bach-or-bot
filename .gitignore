@@ -1,5 +1,3 @@
-# I just copied this from the most common .gitignore templates for AI/ML projects - Acelle
-
 # Python
 __pycache__/
 *.py[cod]
@@ -100,7 +98,7 @@ data/.tmp.driveupload/
 *.parquet
 
 # Model files
-models/
+# models/
 *.pkl
 *.pickle
 *.joblib

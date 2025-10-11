@@ -88,16 +88,28 @@ class MusicLIMEPredictor:
         start_time = time.time()
         print("[MusicLIME] Scaling features (batch)...")
         audio_scaler = joblib.load("models/fusion/audio_scaler.pkl")
-        lyric_scaler = joblib.load("models/fusion/lyric_scaler.pkl")
+        lyric_scaler = joblib.load("models/fusion/lyrics_scaler.pkl")
 
         scaled_audio_batch = audio_scaler.transform(
             audio_features_batch
         )  # (batch, 384)
         scaled_lyrics_batch = lyric_scaler.transform(
-            reduced_lyrics_batch
-        )  # (batch, 256)
+            lyrics_features_batch
+        )  # (batch, 2048)
 
-        # Step 5: Concatenate features
+        # Step 4: Apply PCA to lyrics batch
+        print("[MusicLIME] Applying PCA to lyrics (batch)")
+        pca_model = joblib.load("models/fusion/pca.pkl")
+        reduced_lyrics_batch = pca_model.transform(scaled_lyrics_batch)  # (batch, 512)
+
+        # Step 5: Apply scaler to PCA-scaled lyrics batch
+        print("[MusicLIME] Reapplying scaler to PCA-scaled batch")
+        pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
+        reduced_lyrics_batch = pca_scaler.transform(
+            reduced_lyrics_batch
+        )  # (batch, 512)
+
+        # Step 6: Concatenate features
         combined_features_batch = np.concatenate(
             [scaled_audio_batch, scaled_lyrics_batch], axis=1
         )

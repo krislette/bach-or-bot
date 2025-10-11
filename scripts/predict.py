@@ -47,7 +47,7 @@ def predict_pipeline(audio_file, lyrics):
     # 5.) Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)
 
-    # Scale the vectors using Z-Score
+    # TODO: Remove if unneccesary - Scale the vectors using Z-Score
     audio_features, reduced_lyrics = instance_scaler(audio_features, reduced_lyrics)
 
     # 6.) Concatenate the vectors of audio_features + lyrics_features

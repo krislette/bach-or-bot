@@ -52,6 +52,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import yaml
+import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
 
@@ -441,7 +442,7 @@ class MLPClassifier:
 
         return probabilities, predictions
 
-    def predict_single(self, features: np.ndarray) -> Tuple[float, int, str]:
+    def predict_single(self, features: np.ndarray, temperature: float = 2.5) -> Tuple[float, int, str]:
         """
         Predict whether a single song is AI-generated or human-composed.
 
@@ -482,14 +483,19 @@ class MLPClassifier:
                 f"Expected features for 1 song, got {features.shape[0]} songs. Use predict_batch() instead."
             )
 
-        # Use the existing predict method
-        probabilities, predictions = self.predict(features)
+        self.model.eval()
+        with torch.no_grad():
+            features_tensor = torch.FloatTensor(features).to(self.device)
+            outputs = self.model(features_tensor)
+            logit = torch.logit(outputs.clamp(1e-6, 1 - 1e-6))
+            probabilities = torch.sigmoid(logit / temperature).item()
+            probabilities = np.clip(probabilities, 0.01, 0.99)
 
         # Extract single results
-        probability = float(probabilities[0])
-        prediction = int(predictions[0])
+        prediction = int(probabilities >= 0.5)
         label = "Human-Composed" if prediction == 1 else "AI-Generated"
-
+        probability = probabilities*100 if prediction == 1 else (1 - probabilities)*100
+        
         return probability, prediction, label
 
     def predict_batch(self, features: np.ndarray, return_details: bool = False) -> Dict:
@@ -722,17 +728,6 @@ class MLPClassifier:
         logger.info(self.model)
         total_params = sum(p.numel() for p in self.model.parameters())
         logger.info(f"Total parameters: {total_params:,}")
-
-    def predict_single(self, features: np.ndarray) -> float:
-        """Predict probability for a single sample."""
-        if not self.is_trained:
-            raise ValueError("Model must be trained before prediction")
-
-        self.model.eval()
-        with torch.no_grad():
-            features_tensor = torch.FloatTensor(features).unsqueeze(0).to(self.device)
-            output = self.model(features_tensor)
-            return float(output.cpu().numpy()[0])
 
 
 def build_mlp(input_dim: int, config: Dict) -> MLPClassifier:

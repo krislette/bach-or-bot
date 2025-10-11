@@ -103,6 +103,24 @@ async def validate_audio_source(
     return audio_content, audio_file.filename, audio_file.content_type
 
 
+@app.get("/", response_model=WelcomeResponse, tags=["Root"])
+def root():
+    """
+    Root endpoint to check if the API is running.
+    """
+    return WelcomeResponse(
+        status="success",
+        message="Welcome to Bach or Bot API!",
+        endpoints={
+            "/": "This welcome message",
+            "/docs": "FastAPI auto-generated API docs",
+            "/api/v1/model/info": "Model information and capabilities",
+            "/api/v1/predict": "POST endpoint for bach-or-bot prediction",
+            "/api/v1/explain": "POST endpoint for prediction with explainability",
+        },
+    )
+
+
 @app.post(
     "/api/v1/predict",
     response_model=PredictionResponse,

@@ -15,7 +15,32 @@ from src.musiclime.print_utils import green_bold
 
 
 class MusicLIMEExplainer:
+    """
+    LIME-based explainer for multimodal music classification models.
+
+    Generates local explanations for AI vs Human music classification by
+    perturbing audio (source separation) and lyrics (line removal) components
+    and analyzing their impact on model predictions.
+
+    Attributes
+    ----------
+    random_state : RandomState
+        Random number generator for reproducible perturbations
+    base : LimeBase
+        Core LIME explanation engine with exponential kernel
+    """
+
     def __init__(self, kernel_width=25, random_state=None):
+        """
+        Initialize MusicLIME explainer with kernel parameters.
+
+        Parameters
+        ----------
+        kernel_width : int, default=25
+            Width parameter for the exponential kernel function
+        random_state : int or RandomState, optional
+            Random seed for reproducible perturbations
+        """
         self.random_state = check_random_state(random_state)
 
         def kernel(d, kernel_width):
@@ -33,6 +58,29 @@ class MusicLIMEExplainer:
         labels=(1,),
         temporal_segments=10,
     ):
+        """
+        Generate LIME explanations for a music instance using audio and lyrics.
+
+        Parameters
+        ----------
+        audio : array-like
+            Raw audio waveform data
+        lyrics : str
+            Song lyrics as text string
+        predict_fn : callable
+            Prediction function that takes (texts, audios) and returns probabilities (wrapper)
+        num_samples : int, default=1000
+            Number of perturbed samples to generate for LIME
+        labels : tuple, default=(1,)
+            Target labels to explain (0=AI-Generated, 1=Human-Composed)
+        temporal_segments : int, default=10
+            Number of temporal segments for audio factorization
+
+        Returns
+        -------
+        MusicLIMEExplanation
+            Explanation object containing feature importance weights
+        """
         # These are for debugging only I have to see THAT progress
         print("[MusicLIME] Starting MusicLIME explanation...")
         print(
@@ -93,6 +141,29 @@ class MusicLIMEExplainer:
         return explanation
 
     def _generate_neighborhood(self, audio_fact, text_fact, predict_fn, num_samples):
+        """
+        Generate perturbed samples and predictions for LIME explanation.
+
+        Parameters
+        ----------
+        audio_fact : OpenUnmixFactorization
+            Audio factorization object for source separation
+        text_fact : LineIndexedString
+            Text factorization object for line-based perturbations
+        predict_fn : callable
+            Model prediction function
+        num_samples : int
+            Number of perturbations to generate
+
+        Returns
+        -------
+        data : ndarray
+            Binary perturbation masks (num_samples, total_features)
+        predictions : ndarray
+            Model predictions for perturbed instances
+        distances : ndarray
+            Cosine distances from original instance
+        """
         n_audio = audio_fact.get_number_components()
         n_text = text_fact.num_words()
         total_features = n_audio + n_text
@@ -192,7 +263,48 @@ class MusicLIMEExplainer:
 
 
 class MusicLIMEExplanation:
+    """
+    Container for MusicLIME explanation results and analysis methods.
+
+    Stores factorizations, perturbation data, and LIME-fitted explanations
+    for a single music instance. Provides methods to extract top features
+    and export results to structured formats.
+
+    Attributes
+    ----------
+    audio_factorization : OpenUnmixFactorization
+        Audio source separation components
+    text_factorization : LineIndexedString
+        Lyrics line segmentation components
+    data : ndarray
+        Binary perturbation masks used for explanation
+    predictions : ndarray
+        Model predictions for all perturbations
+    intercept : dict
+        LIME model intercepts by label
+    local_exp : dict
+        Feature importance weights by label
+    score : dict
+        LIME model R² scores by label
+    local_pred : dict
+        Local model predictions by label
+    """
+
     def __init__(self, audio_factorization, text_factorization, data, predictions):
+        """
+        Initialize explanation object with factorizations and prediction data.
+
+        Parameters
+        ----------
+        audio_factorization : OpenUnmixFactorization
+            Audio source separation components
+        text_factorization : LineIndexedString
+            Text line segmentation components
+        data : ndarray
+            Binary perturbation masks used for explanation
+        predictions : ndarray
+            Model predictions for all perturbations
+        """
         self.audio_factorization = audio_factorization
         self.text_factorization = text_factorization
         self.data = data
@@ -203,7 +315,21 @@ class MusicLIMEExplanation:
         self.local_pred = {}
 
     def get_explanation(self, label, num_features=10):
-        """Get top features for explanation"""
+        """
+        Extract top feature explanations for a specific label.
+
+        Parameters
+        ----------
+        label : int
+            Target label to explain (0=AI-Generated, 1=Human-Composed)
+        num_features : int, default=10
+            Number of top features to return
+
+        Returns
+        -------
+        list of dict
+            Feature explanations with type, feature description, and weight
+        """
         if label not in self.local_exp:
             return []
 
@@ -231,7 +357,23 @@ class MusicLIMEExplanation:
         return explanations
 
     def save_to_json(self, filepath, song_info=None, num_features=10):
-        """Save explanation results to JSON file"""
+        """
+        Save explanation results to structured JSON file.
+
+        Parameters
+        ----------
+        filepath : str
+            Output filename for JSON results
+        song_info : dict, optional
+            Additional metadata about the song
+        num_features : int, default=10
+            Number of top features to include in output
+
+        Returns
+        -------
+        Path
+            Path to the saved JSON file
+        """
         results_dir = Path("results")
         results_dir.mkdir(exist_ok=True)
 

@@ -14,7 +14,7 @@ jobs:
 
     - name: Deploy to Hugging Face Spaces
       env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_TOKEN: ${{ secrets.HF_DEPLOYMENT_TOKEN }}
       run: |
         git config --global user.email "acellekrislette@gmail.com"
         git config --global user.name "krislette"

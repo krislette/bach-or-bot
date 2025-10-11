@@ -26,12 +26,10 @@ jobs:
         cp -r src/ hf-space/
         cp -r app/ hf-space/
         cp -r config/ hf-space/
-        cp -r models/ hf-space/
         cp -r scripts/ hf-space/
         cp pyproject.toml hf-space/
         cp poetry.lock hf-space/
         cp Dockerfile.hf hf-space/Dockerfile
-        cp .gitignore hf-space/
 
         # Push to HF
         cd hf-space

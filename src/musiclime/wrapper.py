@@ -38,8 +38,6 @@ class MusicLIMEPredictor:
         processed_lyrics = []
 
         for i, (text, audio) in enumerate(zip(texts, audios)):
-            # if i % 100 == 0:
-            #     print(f"   Preprocessing {i+1}/{len(texts)}")
             processed_audio, processed_lyric = single_preprocessing(audio, text)
             processed_audios.append(processed_audio)
             processed_lyrics.append(processed_lyric)
@@ -74,22 +72,15 @@ class MusicLIMEPredictor:
             )
         )
 
-        # Step 3: Apply PCA to lyrics batch first
+        # Step 3: Scale and reduce in batch
         start_time = time.time()
-        print("[MusicLIME] Applying PCA to lyrics (batch)")
-        pca_model = joblib.load("models/fusion/pca.pkl")
-        reduced_lyrics_batch = pca_model.transform(
-            lyrics_features_batch
-        )  # (batch, 256)
-        pca_time = time.time() - start_time
-        print(green_bold(f"[MusicLIME] PCA completed in {pca_time:.2f}s"))
+        print("[MusicLIME] Scaling and reducing features (batch)...")
 
-        # Step 4: Scale the reduced features
-        start_time = time.time()
-        print("[MusicLIME] Scaling features (batch)...")
+        # Load the trained scalers
         audio_scaler = joblib.load("models/fusion/audio_scaler.pkl")
         lyric_scaler = joblib.load("models/fusion/lyrics_scaler.pkl")
 
+        # Then apply scaling to the batch
         scaled_audio_batch = audio_scaler.transform(
             audio_features_batch
         )  # (batch, 384)
@@ -111,19 +102,19 @@ class MusicLIMEPredictor:
 
         # Step 6: Concatenate features
         combined_features_batch = np.concatenate(
-            [scaled_audio_batch, scaled_lyrics_batch], axis=1
-        )
+            [scaled_audio_batch, reduced_lyrics_batch], axis=1
+        )  # (batch, sum of lyrics & audio vector dims)
         scaling_time = time.time() - start_time
         print(green_bold(f"[MusicLIME] Scaling completed in {scaling_time:.2f}s"))
 
-        # Step 6: Batch MLP prediction
+        # Step 7: Batch MLP prediction
         start_time = time.time()
         print("[MusicLIME] Running MLP predictions (batch)...")
         if self.classifier is None:
             self.classifier = build_mlp(
                 input_dim=combined_features_batch.shape[1], config=self.config
             )
-            self.classifier.load_model("models/mlp/mlp_multimodal.pth")
+            self.classifier.load_model("models/mlp/mlp_best.pth")
 
         probabilities, predictions = self.classifier.predict(combined_features_batch)
 
@@ -134,17 +125,12 @@ class MusicLIMEPredictor:
 
         # Total time summary
         total_time = (
-            preprocessing_time
-            + audio_time
-            + lyrics_time
-            + pca_time
-            + scaling_time
-            + mlp_time
+            preprocessing_time + audio_time + lyrics_time + scaling_time + mlp_time
         )
         print(f"[MusicLIME] Batch processing complete!")
         print(
             green_bold(
-                f"[MusicLIME] Total time: {total_time:.2f}s (Preprocessing: {preprocessing_time:.2f}s, Audio: {audio_time:.2f}s, Lyrics: {lyrics_time:.2f}s, PCA: {pca_time:.2f}s, Scaling: {scaling_time:.2f}s, MLP: {mlp_time:.2f}s)"
+                f"[MusicLIME] Total time: {total_time:.2f}s (Preprocessing: {preprocessing_time:.2f}s, Audio: {audio_time:.2f}s, Lyrics: {lyrics_time:.2f}s, Scaling: {scaling_time:.2f}s, MLP: {mlp_time:.2f}s)"
             )
         )
 

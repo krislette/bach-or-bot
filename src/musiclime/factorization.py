@@ -1,29 +1,52 @@
 import numpy as np
+import time
 import torch
 from openunmix import predict
+from src.musiclime.print_utils import green_bold
 
 
 class OpenUnmixFactorization:
     def __init__(self, audio, temporal_segmentation_params=10, composition_fn=None):
-        print(f"[MusicLIME] Initializing OpenUnmix factorization...")
+        print("[MusicLIME] Initializing OpenUnmix factorization...")
         self.audio = audio
         self.target_sr = 44100
 
+        start_time = time.time()
         print(
             f"[MusicLIME] Computing {temporal_segmentation_params} temporal segments..."
         )
         self.temporal_segments = self._compute_segments(
             audio, temporal_segmentation_params
         )
+        segmentation_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Temporal segmentation completed in {segmentation_time:.2f}s"
+            )
+        )
 
         # Initialize source separation
+        start_time = time.time()
         print("[MusicLIME] Separating audio sources...")
         self.original_components, self.component_names = self._separate_sources()
         print(f"[MusicLIME] Found components: {self.component_names}")
+        separation_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Source separation completed in {separation_time:.2f}s"
+            )
+        )
 
+        start_time = time.time()
         print("[MusicLIME] Preparing temporal-source combinations...")
         self._prepare_temporal_components()
         print(f"[MusicLIME] Created {len(self.components)} total components")
+        preparation_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Component preparation completed in {preparation_time:.2f}s"
+            )
+        )
 
     def _compute_segments(self, signal, n_segments):
         audio_length = len(signal)
@@ -38,7 +61,20 @@ class OpenUnmixFactorization:
 
     def _separate_sources(self):
         waveform = np.expand_dims(self.audio, axis=1)
-        prediction = predict.separate(torch.as_tensor(waveform).float(), rate=44100)
+
+        # Load openunmix .pth files from local dir
+        model_path = "models/musiclime"
+
+        # Specify targets
+        targets = ["vocals", "bass", "drums", "other"]
+
+        # Then load openunmix files to openunmix' method
+        prediction = predict.separate(
+            torch.as_tensor(waveform).float(),
+            rate=44100,
+            model_str_or_path=model_path,
+            targets=targets,
+        )
 
         components = [prediction[key][0].mean(dim=0).numpy() for key in prediction]
         names = list(prediction.keys())

@@ -1,11 +1,17 @@
+import json
 import numpy as np
 import sklearn.metrics
+import time
+
 from functools import partial
 from sklearn.utils import check_random_state
 from lime.lime_base import LimeBase
+from pathlib import Path
+from datetime import datetime
 
 from src.musiclime.text_utils import LineIndexedString
 from src.musiclime.factorization import OpenUnmixFactorization
+from src.musiclime.print_utils import green_bold
 
 
 class MusicLIMEExplainer:
@@ -43,9 +49,16 @@ class MusicLIMEExplainer:
             f"[MusicLIME] Audio components: {audio_factorization.get_number_components()}"
         )
 
+        start_time = time.time()
         print("[MusicLIME] Processing lyrics...")
         text_factorization = LineIndexedString(lyrics)
         print(f"[MusicLIME] Text lines: {text_factorization.num_words()}")
+        text_processing_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Lyrics processing completed in {text_processing_time:.2f}s"
+            )
+        )
 
         # Generate perturbations and get predictions
         print(f"[MusicLIME] Generating {num_samples} perturbations...")
@@ -53,13 +66,13 @@ class MusicLIMEExplainer:
             audio_factorization, text_factorization, predict_fn, num_samples
         )
 
-        # Create explanation object
+        # LIME fitting, create explanation object
+        start_time = time.time()
         print("[MusicLIME] Fitting LIME model...")
         explanation = MusicLIMEExplanation(
             audio_factorization, text_factorization, data, predictions
         )
 
-        # Fit local model for each label
         for label in labels:
             print(f"[MusicLIME] Explaining label {label}...")
             (
@@ -71,7 +84,12 @@ class MusicLIMEExplainer:
                 data, predictions, distances, label, num_features=20
             )
 
+        lime_time = time.time() - start_time
+        print(
+            green_bold(f"[MusicLIME] LIME model fitting completed in {lime_time:.2f}s")
+        )
         print("[MusicLIME] MusicLIME explanation complete!")
+
         return explanation
 
     def _generate_neighborhood(self, audio_fact, text_fact, predict_fn, num_samples):
@@ -84,13 +102,17 @@ class MusicLIMEExplainer:
         )
 
         # Generate binary masks
+        start_time = time.time()
         print("[MusicLIME] Generating perturbation masks...")
         data = self.random_state.randint(0, 2, num_samples * total_features).reshape(
             (num_samples, total_features)
         )
         data[0, :] = 1  # Original instance
+        mask_time = time.time() - start_time
+        print(green_bold(f"[MusicLIME] Mask generation completed in {mask_time:.2f}s"))
 
         # Generate perturbed instances
+        start_time = time.time()
         texts = []
         audios = []
 
@@ -111,9 +133,17 @@ class MusicLIMEExplainer:
             perturbed_text = text_fact.inverse_removing(inactive_lines)
             texts.append(perturbed_text)
 
+        perturbation_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Perturbation creation completed in {perturbation_time:.2f}s"
+            )
+        )
+
         # Get predictions
         print(f"[MusicLIME] Getting predictions for {len(texts)} samples...")
         predictions = predict_fn(texts, audios)
+        prediction_time = time.time() - start_time
 
         # Show the original prediction (first row is always the unperturbed original)
         original_prediction = predictions[0]
@@ -199,3 +229,60 @@ class MusicLIMEExplanation:
                 )
 
         return explanations
+
+    def save_to_json(self, filepath, song_info=None, num_features=10):
+        """Save explanation results to JSON file"""
+        results_dir = Path("results")
+        results_dir.mkdir(exist_ok=True)
+
+        # Get explanation data
+        explanation_data = {}
+        for label in self.local_exp.keys():
+            features = self.get_explanation(label, num_features)
+
+            explanation_data[f"label_{label}"] = {
+                "prediction_label": "Human-Composed" if label == 1 else "AI-Generated",
+                "intercept": float(self.intercept.get(label, 0)),
+                "score": float(self.score.get(label, 0)),
+                "local_prediction": (
+                    float(self.local_pred.get(label, [0])[0])
+                    if self.local_pred.get(label)
+                    else 0
+                ),
+                "top_features": [
+                    {
+                        "rank": i + 1,
+                        "type": item["type"],
+                        "feature": item["feature"],
+                        "weight": float(item["weight"]),
+                    }
+                    for i, item in enumerate(features)
+                ],
+            }
+
+        # Create complete JSON structure
+        json_output = {
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "song_info": song_info or {},
+                "model_info": {
+                    "total_audio_components": self.audio_factorization.get_number_components(),
+                    "total_text_lines": self.text_factorization.num_words(),
+                    "total_features": self.audio_factorization.get_number_components()
+                    + self.text_factorization.num_words(),
+                },
+                "explanation_params": {
+                    "num_samples": len(self.data),
+                    "num_features_shown": num_features,
+                },
+            },
+            "explanations": explanation_data,
+        }
+
+        # Save to results folder
+        output_path = results_dir / filepath
+        with open(output_path, "w") as f:
+            json.dump(json_output, f, indent=2)
+
+        print(f"[MusicLIME] Explanation saved to: {output_path}")
+        return output_path

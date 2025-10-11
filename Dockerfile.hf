@@ -25,10 +25,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy essential files first
+# Copy and install Python dependencies
 COPY pyproject.toml poetry.lock* ./
-
-# Install poetry and dependencies
 RUN python3.11 -m pip install poetry && \
     poetry config virtualenvs.create false && \
     poetry install --only=main
@@ -39,12 +37,23 @@ COPY app/ ./app/
 COPY config/ ./config/
 COPY models/ ./models/
 COPY scripts/ ./scripts/
-COPY .env ./
+
+# Create cache directories with proper permissions
+RUN mkdir -p /app/.cache/huggingface /app/.cache/torch /tmp/numba_cache && \
+    chmod -R 777 /app/.cache /tmp/numba_cache
 
 # Set environment
 ENV PYTHONPATH="/app"
 ENV HF_HOME="/app/.cache/huggingface"
+ENV TRANSFORMERS_CACHE="/app/.cache/huggingface"
+ENV TORCH_HOME="/app/.cache/torch"
+ENV NUMBA_CACHE_DIR="/tmp/numba_cache"
+ENV NUMBA_DISABLE_JIT=0
+ENV MUSICLIME_NUM_SAMPLES=1000
+ENV MUSICLIME_NUM_FEATURES=10
 
-EXPOSE 8000
+# Hugging Face Spaces specific, expose port 7860
+EXPOSE 7860
 
-CMD ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run on port 7860 for HF Spaces
+CMD ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "7860", "--timeout-keep-alive", "600"]

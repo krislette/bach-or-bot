@@ -1,47 +1,79 @@
-import librosa
-from pathlib import Path
-
+import os
+import numpy as np
+from datetime import datetime
 from src.musiclime.explainer import MusicLIMEExplainer
 from src.musiclime.wrapper import MusicLIMEPredictor
 
 
-def explain():
-    # Create musiclime-related instances
+def musiclime(audio_data, lyrics_text):
+    """
+    MusicLIME wrapper for API usage.
+    Args:
+        audio_data: Audio array (from librosa.load or similar)
+        lyrics_text: String containing lyrics
+    Returns:
+        dict: Structured explanation results
+    """
+    start_time = datetime.now()
+
+    # Get number of samples from environment variable, default to 1000
+    num_samples = int(os.getenv("MUSICLIME_NUM_SAMPLES", "1000"))
+    num_features = int(os.getenv("MUSICLIME_NUM_FEATURES", "10"))
+
+    print(f"[MusicLIME] Using num_samples={num_samples}, num_features={num_features}")
+
+    # Create musiclime instances
     explainer = MusicLIMEExplainer()
     predictor = MusicLIMEPredictor()
 
-    # Set the path for audio and lyrics [these are samples only - song is Silver Spring]
-    audio_path = Path("data/external/sample_2.mp3")
-    lyrics_path = Path("data/external/sample_2.txt")
-
-    # Load the audio as an object + load the lyrics as string
-    y, sr = librosa.load(audio_path)
-    lyrics_text = lyrics_path.read_text(encoding="utf-8")
-
-    # Generate explanations using musiclime
+    # Generate explanations
     explanation = explainer.explain_instance(
-        audio=y,
+        audio=audio_data,
         lyrics=lyrics_text,
         predict_fn=predictor,
-        num_samples=5,
+        num_samples=num_samples,
         labels=(1,),
     )
 
-    # Print explanations
-    results = explanation.get_explanation(label=1, num_features=10)
-    print("\n" + "=" * 80)
-    print("[MusicLIME] Top 10 most important features for the prediction")
-    print("=" * 80)
+    # Get prediction info
+    original_prediction = explanation.predictions[0]
+    predicted_class = np.argmax(original_prediction)
+    confidence = float(np.max(original_prediction))
 
-    for i, item in enumerate(results, 1):
-        print(
-            f"#{i:2d} | {item['type']:6s} | {item['feature'][:50]:50s} | weight: {item['weight']:+.3f}"
-        )
+    # Get top features (I also made this configurable to prevent rebuilding)
+    top_features = explanation.get_explanation(label=1, num_features=num_features)
 
-    print("=" * 80)
-    print(f"[MusicLIME] Total features analyzed: {len(results)}")
-    print("[MusicLIME] Higher absolute weights = more important for the prediction")
+    # Calculate runtime
+    end_time = datetime.now()
+    runtime_seconds = (end_time - start_time).total_seconds()
 
-
-if __name__ == "__main__":
-    explain()
+    return {
+        "prediction": {
+            "class": int(predicted_class),
+            "class_name": "Human-Composed" if predicted_class == 1 else "AI-Generated",
+            "confidence": confidence,
+            "probabilities": original_prediction.tolist(),
+        },
+        "explanations": [
+            {
+                "rank": i + 1,
+                "modality": item["type"],
+                "feature_text": item["feature"],
+                "weight": float(item["weight"]),
+                "importance": abs(float(item["weight"])),
+            }
+            for i, item in enumerate(top_features)
+        ],
+        "summary": {
+            "total_features_analyzed": len(top_features),
+            "audio_features_count": len(
+                [f for f in top_features if f["type"] == "audio"]
+            ),
+            "lyrics_features_count": len(
+                [f for f in top_features if f["type"] == "lyrics"]
+            ),
+            "runtime_seconds": runtime_seconds,
+            "samples_generated": num_samples,
+            "timestamp": start_time.isoformat(),
+        },
+    }

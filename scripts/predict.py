@@ -47,7 +47,7 @@ def predict_pipeline(audio_file, lyrics):
     # 5.) Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)
 
-    # TODO: Remove if unneccesary - Scale the vectors using Z-Score
+    # Scale the vectors using Z-Score again
     audio_features, reduced_lyrics = instance_scaler(audio_features, reduced_lyrics)
 
     # 6.) Concatenate the vectors of audio_features + lyrics_features
@@ -58,7 +58,7 @@ def predict_pipeline(audio_file, lyrics):
     classifier = build_mlp(input_dim=results.shape[1], config=config)
 
     # 7.) Load trained weights (make sure this path matches where you saved your model)
-    model_path = "models/mlp/mlp_multimodal.pth"
+    model_path = "models/mlp/mlp_best.pth"
     classifier.load_model(model_path)
     classifier.model.eval()
 

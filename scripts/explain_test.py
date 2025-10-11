@@ -34,7 +34,7 @@ def explain():
         audio=y,
         lyrics=lyrics_text,
         predict_fn=predictor,
-        num_samples=1000,
+        num_samples=5,
         labels=(1,),
     )
 

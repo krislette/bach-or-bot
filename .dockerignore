@@ -33,9 +33,8 @@ logs/
 data/
 results/
 
-# Build Dependencies
+# Build Dependencies [kept this since I am not actually using the requirements file]
 requirements.txt
-poetry.lock
 
 # OS Generated
 .DS_Store

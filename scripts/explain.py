@@ -26,7 +26,13 @@ def musiclime(audio_data, lyrics_text):
     explainer = MusicLIMEExplainer()
     predictor = MusicLIMEPredictor()
 
-    # Generate explanations
+    # Truncate raw audio to 2 minutes before any processing
+    target_samples = int(2 * 60 * 22050)
+    if len(audio_data) > target_samples:
+        # Keep first 2 minutes
+        audio_data = audio_data[:target_samples]
+
+    # Then generate explanations
     explanation = explainer.explain_instance(
         audio=audio_data,
         lyrics=lyrics_text,

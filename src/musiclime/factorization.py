@@ -61,7 +61,20 @@ class OpenUnmixFactorization:
 
     def _separate_sources(self):
         waveform = np.expand_dims(self.audio, axis=1)
-        prediction = predict.separate(torch.as_tensor(waveform).float(), rate=44100)
+
+        # Load openunmix .pth files from local dir
+        model_path = "models/musiclime"
+
+        # Specify targets
+        targets = ["vocals", "bass", "drums", "other"]
+
+        # Then load openunmix files to openunmix' method
+        prediction = predict.separate(
+            torch.as_tensor(waveform).float(),
+            rate=44100,
+            model_str_or_path=model_path,
+            targets=targets,
+        )
 
         components = [prediction[key][0].mean(dim=0).numpy() for key in prediction]
         names = list(prediction.keys())

@@ -74,17 +74,20 @@ class AudioPreprocessor:
                 # FIXED: Force librosa to load properly
                 # Load at native sample rate first, then we will resample later
                 y, sr = librosa.load(str(file), sr=None, mono=False, dtype=np.float32)
-                
+
                 # If loading fails (all zeros), try with explicit sample rate
                 if np.abs(y).max() < 0.0001:
                     print(f"Warning: First load failed, trying with sr=48000")
-                    y, sr = librosa.load(str(file), sr=48000, mono=False, dtype=np.float32)
-                
+                    y, sr = librosa.load(
+                        str(file), sr=48000, mono=False, dtype=np.float32
+                    )
+
                 # Last resort: use soundfile instead
                 if np.abs(y).max() < 0.0001:
                     print(f"Warning: Librosa failed, trying soundfile")
                     import soundfile as sf
-                    y, sr = sf.read(str(file), dtype='float32')
+
+                    y, sr = sf.read(str(file), dtype="float32")
                     if y.ndim == 2:
                         y = y.T  # soundfile returns (samples, channels)
                     else:
@@ -109,7 +112,9 @@ class AudioPreprocessor:
 
             # Verify we actually loaded audio
             if np.abs(y).max() < 0.0001:
-                raise RuntimeError(f"Audio file appears to be silent or corrupted: {audiofile}")
+                raise RuntimeError(
+                    f"Audio file appears to be silent or corrupted: {audiofile}"
+                )
 
             # Ensure consistent shape
             if y.ndim == 1:
@@ -118,7 +123,7 @@ class AudioPreprocessor:
                 y = y.T if y.shape[0] > y.shape[1] else y
 
             waveform = torch.from_numpy(y).float()
-            
+
             return waveform, sr
 
         except Exception as e:
@@ -143,7 +148,9 @@ class AudioPreprocessor:
             Resampled audio waveform at `TARGET_SAMPLING`.
         """
         if original_sr != self.TARGET_SAMPLING:
-            #print(f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}.")
+            # print(
+            #     f"Current waveform is {original_sr}, to convert to {self.TARGET_SAMPLING}."
+            # )
             waveform = AF.resample(
                 waveform, orig_freq=original_sr, new_freq=self.TARGET_SAMPLING
             )
@@ -226,8 +233,8 @@ class AudioPreprocessor:
             Base filename to use.
         """
         self.OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
-        #print(f"Saving {filename} to {self.OUTPUT_PATH}.")
-        
+        # print(f"Saving {filename} to {self.OUTPUT_PATH}.")
+
         output_path = self.OUTPUT_PATH / f"{filename}"
 
         torchaudio.save(str(output_path), waveform, self.TARGET_SAMPLING)
@@ -257,7 +264,7 @@ class AudioPreprocessor:
 
         # Convert the audio into mono
         if waveform.shape[0] > 1:
-            #print("Current audio is stereo. Converting to mono.")
+            # print("Current audio is stereo. Converting to mono.")
             waveform = waveform.mean(dim=0, keepdim=True)
 
         # If there is a skip value provided, trim it

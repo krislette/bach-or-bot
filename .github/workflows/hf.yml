@@ -1,0 +1,38 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
+
+    - name: Deploy to Hugging Face Spaces
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      run: |
+        git config --global user.email "acellekrislette@gmail.com"
+        git config --global user.name "krislette"
+
+        # Clone HF Space
+        git clone https://huggingface.co/spaces/krislette/bach-or-bot hf-space
+
+        # Copy files (excluding .env and other sensitive files)
+        cp -r src/ hf-space/
+        cp -r app/ hf-space/
+        cp -r config/ hf-space/
+        cp -r scripts/ hf-space/
+        cp pyproject.toml hf-space/
+        cp poetry.lock hf-space/
+        cp Dockerfile.hf hf-space/Dockerfile
+
+        # Push to HF
+        cd hf-space
+        git add .
+        git commit -m "Auto-deploy from GitHub: ${{ github.sha }}" || echo "No changes to commit"
+        git push https://krislette:$HF_TOKEN@huggingface.co/spaces/krislette/bach-or-bot main

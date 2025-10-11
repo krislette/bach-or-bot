@@ -1,10 +1,13 @@
+import time
 import joblib
 import numpy as np
+
 from src.preprocessing.preprocessor import single_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.llm2vectrain.model import load_llm2vec_model
 from src.models.mlp import build_mlp, load_config
+from src.musiclime.print_utils import green_bold
 
 
 class MusicLIMEPredictor:
@@ -29,27 +32,48 @@ class MusicLIMEPredictor:
         print(f"[MusicLIME] Processing {len(texts)} samples with batch functions...")
 
         # Step 1: Preprocess all samples (still needs to be individual)
+        start_time = time.time()
         print("[MusicLIME] Preprocessing samples...")
         processed_audios = []
         processed_lyrics = []
 
         for i, (text, audio) in enumerate(zip(texts, audios)):
-            if i % 100 == 0:
-                print(f"   Preprocessing {i+1}/{len(texts)}")
             processed_audio, processed_lyric = single_preprocessing(audio, text)
             processed_audios.append(processed_audio)
             processed_lyrics.append(processed_lyric)
 
-        # Step 2: BATCH feature extraction
+        preprocessing_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Preprocessing completed in {preprocessing_time:.2f}s"
+            )
+        )
+
+        # Step 2: Batch feature extraction
+        start_time = time.time()
         print("[MusicLIME] Extracting audio features (batch)...")
         audio_features_batch = spectttra_train(processed_audios)  # (batch, 384)
+        audio_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Audio feature extraction completed in {audio_time:.2f}s"
+            )
+        )
 
+        start_time = time.time()
         print("[MusicLIME] Extracting lyrics features (batch)...")
         lyrics_features_batch = l2vec_train(
             self.llm2vec_model, processed_lyrics
-        )  # (batch, 4096)
+        )  # (batch, 2048)
+        lyrics_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Lyrics feature extraction completed in {lyrics_time:.2f}s"
+            )
+        )
 
         # Step 3: Scale and reduce in batch
+        start_time = time.time()
         print("[MusicLIME] Scaling and reducing features (batch)...")
 
         # Load the trained scalers
@@ -67,23 +91,24 @@ class MusicLIMEPredictor:
         # Step 4: Apply PCA to lyrics batch
         print("[MusicLIME] Applying PCA to lyrics (batch)")
         pca_model = joblib.load("models/fusion/pca.pkl")
-        reduced_lyrics_batch = pca_model.transform(
-            scaled_lyrics_batch
-        )  # (batch, 512)
+        reduced_lyrics_batch = pca_model.transform(scaled_lyrics_batch)  # (batch, 512)
 
         # Step 5: Apply scaler to PCA-scaled lyrics batch
         print("[MusicLIME] Reapplying scaler to PCA-scaled batch")
         pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
         reduced_lyrics_batch = pca_scaler.transform(
             reduced_lyrics_batch
-        ) # (batch, 512)
+        )  # (batch, 512)
 
         # Step 6: Concatenate features
         combined_features_batch = np.concatenate(
             [scaled_audio_batch, reduced_lyrics_batch], axis=1
         )  # (batch, sum of lyrics & audio vector dims)
+        scaling_time = time.time() - start_time
+        print(green_bold(f"[MusicLIME] Scaling completed in {scaling_time:.2f}s"))
 
-        # Step 6: BATCH MLP prediction
+        # Step 7: Batch MLP prediction
+        start_time = time.time()
         print("[MusicLIME] Running MLP predictions (batch)...")
         if self.classifier is None:
             self.classifier = build_mlp(
@@ -95,5 +120,18 @@ class MusicLIMEPredictor:
 
         # Convert to expected format
         batch_results = [[1 - prob, prob] for prob in probabilities]
+        mlp_time = time.time() - start_time
+        print(green_bold(f"[MusicLIME] MLP prediction completed in {mlp_time:.2f}s"))
+
+        # Total time summary
+        total_time = (
+            preprocessing_time + audio_time + lyrics_time + scaling_time + mlp_time
+        )
         print(f"[MusicLIME] Batch processing complete!")
+        print(
+            green_bold(
+                f"[MusicLIME] Total time: {total_time:.2f}s (Preprocessing: {preprocessing_time:.2f}s, Audio: {audio_time:.2f}s, Lyrics: {lyrics_time:.2f}s, Scaling: {scaling_time:.2f}s, MLP: {mlp_time:.2f}s)"
+            )
+        )
+
         return np.array(batch_results)

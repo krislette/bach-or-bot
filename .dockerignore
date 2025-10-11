@@ -1,0 +1,52 @@
+# Version Control
+.git
+.gitignore
+.github/
+
+# Documentation
+README.md
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+.venv*
+.env.local
+
+# Testing
+.pytest_cache/
+.coverage
+tests/
+
+# Development Tools
+notebooks/
+*.log
+logs/
+
+# Project Specific
+data/
+results/
+
+# Build Dependencies
+requirements.txt
+poetry.lock
+
+# OS Generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

@@ -1,0 +1,25 @@
+# Server Configuration
+server:
+  title: "Bach or Bot API"
+  version: "1.0.0"
+
+# File upload limits and validation
+file_upload:
+  # Maximum file size in MB
+  max_file_size_mb: 10
+  # Maximum characters for lyrics
+  max_lyrics_length: 10000
+  allowed_audio_types:
+    - "audio/wav"
+    - "audio/mpeg"
+    - "audio/mp3"
+    - "application/octet-stream"
+
+# API Configuration
+api:
+  cors:
+    # TODO: Change to specific origins in production
+    allow_origins: ["*"]
+    allow_credentials: true
+    allow_methods: ["*"]
+    allow_headers: ["*"]

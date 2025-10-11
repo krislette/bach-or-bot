@@ -47,6 +47,9 @@ def predict_pipeline(audio_file, lyrics):
     # 5.) Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)
 
+    # Scale the vectors using Z-Score again
+    audio_features, reduced_lyrics = instance_scaler(audio_features, reduced_lyrics)
+
     # 6.) Concatenate the vectors of audio_features + lyrics_features
     results = np.concatenate([audio_features, reduced_lyrics], axis=1)
 
@@ -55,18 +58,15 @@ def predict_pipeline(audio_file, lyrics):
     classifier = build_mlp(input_dim=results.shape[1], config=config)
 
     # 7.) Load trained weights (make sure this path matches where you saved your model)
-    model_path = "models/mlp/mlp_multimodal.pth"
+    model_path = "models/mlp/mlp_best.pth"
     classifier.load_model(model_path)
     classifier.model.eval()
 
     # 8.) Run prediction
     probability, prediction, label = classifier.predict_single(results.flatten())
 
-    return {
-        "probability": probability,
-        "prediction": prediction, 
-        "label": label 
-    }
+    return {"probability": probability, "prediction": prediction, "label": label}
+
 
 if __name__ == "__main__":
     # Example usage (replace with real inputs, place song inside data/raw.)
@@ -76,12 +76,14 @@ if __name__ == "__main__":
     label = []
     for row in data.itertuples():
         prediction = predict_pipeline(row.song, row.lyrics)
-        result.append({
-            "song": row.song,
-            "label": row.label,
-            "predicted_label": prediction["label"],
-            "probability": prediction["probability"]
-        })
+        result.append(
+            {
+                "song": row.song,
+                "label": row.label,
+                "predicted_label": prediction["label"],
+                "probability": prediction["probability"],
+            }
+        )
 
     for r in result:
         print(f"Song: {r['song']}")

@@ -1,37 +1,26 @@
-# Use CUDA base for GPU support
-FROM nvidia/cuda:13.0.1-runtime-ubuntu22.04
+# Use smaller base image since Render free tier doesn't have GPU
+FROM python:3.11-slim
 
 # Set timezone non-interactively
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
-# Install Python and basic dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-dev \
-    python3.11-venv \
-    python3.11-distutils \
     git \
     libsndfile1 \
     ffmpeg \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.11 /usr/bin/python3 \
-    && ln -sf /usr/bin/python3.11 /usr/bin/python \
-    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy essential files first
+# Copy and install Python dependencies
 COPY pyproject.toml poetry.lock* ./
-
-# Install poetry and dependencies
-RUN python3.11 -m pip install poetry && \
+RUN python3.11 -m pip install --no-cache-dir poetry && \
     poetry config virtualenvs.create false && \
     poetry install --only=main
+
 
 # Copy application code
 COPY src/ ./src/
@@ -39,12 +28,23 @@ COPY app/ ./app/
 COPY config/ ./config/
 COPY models/ ./models/
 COPY scripts/ ./scripts/
-COPY .env ./
+
+# Create cache directories
+RUN mkdir -p /app/.cache/huggingface /app/.cache/torch /tmp/numba_cache && \
+    chmod -R 777 /app/.cache /tmp/numba_cache
 
 # Set environment
 ENV PYTHONPATH="/app"
 ENV HF_HOME="/app/.cache/huggingface"
+ENV TRANSFORMERS_CACHE="/app/.cache/huggingface"
+ENV TORCH_HOME="/app/.cache/torch"
+ENV NUMBA_CACHE_DIR="/tmp/numba_cache"
+ENV NUMBA_DISABLE_JIT=0
+ENV MUSICLIME_NUM_SAMPLES=1000
+ENV MUSICLIME_NUM_FEATURES=10
 
+# Render uses PORT environment variable
 EXPOSE 8000
 
-CMD ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use PORT env var that Render provides
+CMD uvicorn app.server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 600

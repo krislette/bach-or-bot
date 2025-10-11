@@ -12,9 +12,11 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.pyc
 .Python
 *.so
 .venv*
+venv/
 .env.local
 
 # Testing
@@ -43,6 +45,7 @@ poetry.lock
 .Trashes
 ehthumbs.db
 Thumbs.db
+.cache/
 
 # IDE
 .vscode/
@@ -50,3 +53,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Others
+htmlcov/
+dist/
+build/
+*.egg-info/

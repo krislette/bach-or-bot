@@ -12,9 +12,11 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.pyc
 .Python
 *.so
 .venv*
+venv/
 .env.local
 
 # Testing
@@ -31,9 +33,8 @@ logs/
 data/
 results/
 
-# Build Dependencies
+# Build Dependencies [kept this since I am not actually using the requirements file]
 requirements.txt
-poetry.lock
 
 # OS Generated
 .DS_Store
@@ -43,6 +44,7 @@ poetry.lock
 .Trashes
 ehthumbs.db
 Thumbs.db
+.cache/
 
 # IDE
 .vscode/
@@ -50,3 +52,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Others
+htmlcov/
+dist/
+build/
+*.egg-info/

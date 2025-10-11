@@ -5,6 +5,7 @@ from src.llm2vectrain.llm2vec_trainer import l2vec_single_train, load_pca_model
 from src.models.mlp import build_mlp, load_config
 from src.utils.dataset import instance_scaler
 
+import joblib
 import numpy as np
 import pandas as pd
 
@@ -47,8 +48,9 @@ def predict_pipeline(audio_file, lyrics):
     # 5.) Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)
 
-    # Scale the vectors using Z-Score again
-    audio_features, reduced_lyrics = instance_scaler(audio_features, reduced_lyrics)
+    # 6.) Apply PCA scaler to PCA-reduced lyrics
+    pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
+    reduced_lyrics = pca_scaler.transform(reduced_lyrics)
 
     # 6.) Concatenate the vectors of audio_features + lyrics_features
     results = np.concatenate([audio_features, reduced_lyrics], axis=1)

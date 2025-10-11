@@ -29,6 +29,7 @@ jobs:
         cp -r scripts/ hf-space/
         cp pyproject.toml hf-space/
         cp poetry.lock hf-space/
+        cp .dockerignore hf-space/ 
         cp Dockerfile.hf hf-space/Dockerfile
 
         # Push to HF

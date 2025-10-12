@@ -259,13 +259,13 @@ class AudioPreprocessor:
         """
         waveform, sample_rate = self.load_audio(file)
 
-        # Resample the audio to 16kHz
-        waveform = self.resample_audio(original_sr=sample_rate, waveform=waveform)
-
         # Convert the audio into mono
         if waveform.shape[0] > 1:
             # print("Current audio is stereo. Converting to mono.")
             waveform = waveform.mean(dim=0, keepdim=True)
+
+        # Resample the audio to 16kHz
+        waveform = self.resample_audio(original_sr=sample_rate, waveform=waveform)
 
         # If there is a skip value provided, trim it
         if skip_time is not None and skip_time > 0:

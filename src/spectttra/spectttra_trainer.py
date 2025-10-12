@@ -4,7 +4,11 @@ import numpy as np
 from types import SimpleNamespace
 
 from src.spectttra.feature import FeatureExtractor
-from src.spectttra.spectttra import SpecTTTra, build_spectttra_from_cfg, load_frozen_spectttra
+from src.spectttra.spectttra import (
+    SpecTTTra,
+    build_spectttra_from_cfg,
+    load_frozen_spectttra,
+)
 
 # Shared variables for the model and setup, loaded only once and reused (cache)
 _PREDICTOR_LOCK = threading.Lock()
@@ -19,7 +23,9 @@ def build_spectttra(cfg, device):
     Wrapper that builds SpecTTTra + FeatureExtractor and loads frozen checkpoint.
     """
     feat_ext, model = build_spectttra_from_cfg(cfg, device)
-    model = load_frozen_spectttra(model, "models/spectttra/spectttra_frozen.pth", device)
+    model = load_frozen_spectttra(
+        model, "models/spectttra/spectttra_frozen.pth", device
+    )
     return feat_ext, model
 
 
@@ -107,7 +113,7 @@ def spectttra_predict(audio_tensor):
     cfg = _CFG
 
     # Move waveform to device but keep float for mel extraction
-    waveform = audio_tensor.to(device).float()
+    waveform = audio_tensor.to(device, dtype=torch.float32)
 
     with torch.no_grad():
         # Extract mel-spectrogram
@@ -162,17 +168,21 @@ def spectttra_train(audio_tensors):
 
     # Refactors the loop to be a much faster single-batch operation
     try:
-        waveforms_batch = torch.cat(audio_tensors, dim=0).to(device).float()
+        waveforms_batch = torch.cat(audio_tensors, dim=0).to(
+            device, dtype=torch.float32
+        )
     except Exception as e:
-        print(f"[INFO] Error during tensor concatenation, falling back to loop. Fix preprocessing for speed. Error: {e}")
+        print(
+            f"[INFO] Error during tensor concatenation, falling back to loop. Fix preprocessing for speed. Error: {e}"
+        )
         batch_list = [spectttra_predict(w) for w in audio_tensors]
         return np.array(batch_list)
 
     with torch.no_grad():
         melspec = feat_ext(waveforms_batch)
 
-        # Ensure melspec shape matches model's expectation 
-        expected_frames = model.input_temp_dim # expected_frames is 3744
+        # Ensure melspec shape matches model's expectation
+        expected_frames = model.input_temp_dim  # expected_frames is 3744
         if melspec.shape[2] > expected_frames:
             melspec = melspec[:, :, :expected_frames]
         elif melspec.shape[2] < expected_frames:

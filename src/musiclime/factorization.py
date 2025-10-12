@@ -128,16 +128,22 @@ class OpenUnmixFactorization:
         # Specify targets
         targets = ["vocals", "bass", "drums", "other"]
 
+        # Specify device based on availability
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"[MusicLIME] Using device for source separation: {device}")
+
         # Then load openunmix files to openunmix' method
         prediction = predict.separate(
             torch.as_tensor(waveform).float(),
             rate=44100,
             model_str_or_path=model_path,
             targets=targets,
+            device=device,
         )
 
         components = [prediction[key][0].mean(dim=0).numpy() for key in prediction]
         names = list(prediction.keys())
+
         return components, names
 
     def _prepare_temporal_components(self):

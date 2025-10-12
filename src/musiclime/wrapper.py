@@ -106,18 +106,6 @@ class MusicLIMEPredictor:
             )
         )
 
-        # TODO: Remove debug prints
-        print(f"[DEBUG] wrapper.py audio features shape: {audio_features_batch.shape}")
-        print(
-            f"[DEBUG] wrapper.py lyrics features shape: {lyrics_features_batch.shape}"
-        )
-        print(
-            f"[DEBUG] wrapper.py audio features[0] first 5: {audio_features_batch[0][:5]}"
-        )
-        print(
-            f"[DEBUG] wrapper.py lyrics features[0] first 5: {lyrics_features_batch[0][:5]}"
-        )
-
         # Step 3: Scale and reduce in batch
         start_time = time.time()
         print("[MusicLIME] Scaling and reducing features (batch)...")

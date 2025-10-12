@@ -48,10 +48,6 @@ def predict_pipeline(audio_file, lyrics):
     # 5.) Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)
 
-    # 6.) Apply PCA scaler to PCA-reduced lyrics
-    pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
-    reduced_lyrics = pca_scaler.transform(reduced_lyrics)
-
     # 6.) Concatenate the vectors of audio_features + lyrics_features
     results = np.concatenate([audio_features, reduced_lyrics], axis=1)
 

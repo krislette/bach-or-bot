@@ -86,10 +86,6 @@ class MusicLIMEPredictor:
         # Step 2: Batch feature extraction
         start_time = time.time()
         print("[MusicLIME] Extracting audio features (batch)...")
-        # TODO: Remove this print
-        print(
-            f"[DEBUG] wrapper.py audio tensor[0] first 10 values: {processed_audios[0].flatten()[:10]}"
-        )
         audio_features_batch = spectttra_train(processed_audios)  # (batch, 384)
         audio_time = time.time() - start_time
         print(

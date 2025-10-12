@@ -438,13 +438,11 @@ class MLPClassifier:
 
         probabilities = np.array(probabilities).flatten()
         # Threshold at 0.5
-        predictions = (probabilities > 0.5).astype(int)
+        predictions = (probabilities >= 0.5).astype(int)
 
         return probabilities, predictions
 
-    def predict_single(
-        self, features: np.ndarray, temperature: float = 2.5
-    ) -> Tuple[float, int, str]:
+    def predict_single(self, features: np.ndarray) -> Tuple[float, int, str]:
         """
         Predict whether a single song is AI-generated or human-composed.
 
@@ -488,17 +486,17 @@ class MLPClassifier:
         self.model.eval()
         with torch.no_grad():
             features_tensor = torch.FloatTensor(features).to(self.device)
-            outputs = self.model(features_tensor)
-            probabilities = outputs.item()  # Just use raw output
+            probability = self.model(features_tensor).item()
+
+        probability = np.clip(probability, 0.0, 1.0)
 
         # Extract single results
-        prediction = int(probabilities >= 0.5)
+        prediction = int(probability >= 0.5)
         label = "Human-Composed" if prediction == 1 else "AI-Generated"
-        probability = (
-            probabilities * 100 if prediction == 1 else (1 - probabilities) * 100
-        )
 
-        return probability, prediction, label
+        confidence = probability * 100 if prediction == 1 else (1 - probability) * 100
+
+        return confidence, prediction, label
 
     def predict_batch(self, features: np.ndarray, return_details: bool = False) -> Dict:
         """

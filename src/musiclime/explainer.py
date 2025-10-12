@@ -84,7 +84,7 @@ class MusicLIMEExplainer:
         # These are for debugging only I have to see THAT progress
         print("[MusicLIME] Starting MusicLIME explanation...")
         print(
-            f"[MusicLIME] Audio length: {len(audio)/44100:.1f}s, Temporal segments: {temporal_segments}"
+            f"[MusicLIME] Audio length: {len(audio)/22050:.1f}s, Temporal segments: {temporal_segments}"
         )
         print(f"[MusicLIME] Lyrics lines: {len(lyrics.split(chr(10)))}")
 

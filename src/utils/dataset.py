@@ -9,7 +9,9 @@ import numpy as np
 import logging
 import pandas as pd
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -51,18 +53,20 @@ def dataset_splitter(X: np.ndarray, Y: np.ndarray, ids: np.ndarray = None):
         X_train, y_train, test_size=0.2222, random_state=42, stratify=y_train
     )
 
-    logger.info(f"Train: {X_train.shape}, Validation: {X_val.shape}, Test: {X_test.shape}")
+    logger.info(
+        f"Train: {X_train.shape}, Validation: {X_val.shape}, Test: {X_test.shape}"
+    )
 
     data = {
         "train": (X_train, y_train),
-        "val":   (X_val, y_val),
-        "test":  (X_test, y_test),
+        "val": (X_val, y_val),
+        "test": (X_test, y_test),
     }
 
     return data
 
 
-def scale_pca(data : dict):
+def scale_pca(data: dict):
     """
     Script that scales the splits, and applies PCA to the lyrics vector.
 
@@ -79,8 +83,8 @@ def scale_pca(data : dict):
 
     # Destructure the dictionary to get data split
     X_train, y_train = data["train"]
-    X_val, y_val     = data["val"]
-    X_test, y_test   = data["test"]
+    X_val, y_val = data["val"]
+    X_test, y_test = data["test"]
 
     # Segment the concatenated embedding to audio and lyrics
     X_train_audio, X_train_lyrics = X_train[:, :384], X_train[:, 384:]
@@ -104,7 +108,7 @@ def scale_pca(data : dict):
     batch_size = 1000
 
     for i in range(0, X_train_lyrics.shape[0], batch_size):
-        ipca.partial_fit(X_train_lyrics[i:i + batch_size])
+        ipca.partial_fit(X_train_lyrics[i : i + batch_size])
 
     # Transform in batches
     X_train_lyrics = ipca.transform(X_train_lyrics)
@@ -136,7 +140,7 @@ def scale_pca(data : dict):
     return data
 
 
-def scale_pca_lyrics(data : dict):
+def scale_pca_lyrics(data: dict):
     """
     Script that scales the splits, and applies PCA to the lyrics vector.
 
@@ -153,8 +157,8 @@ def scale_pca_lyrics(data : dict):
 
     # Destructure the dictionary to get data split
     X_train, y_train = data["train"]
-    X_val, y_val     = data["val"]
-    X_test, y_test   = data["test"]
+    X_val, y_val = data["val"]
+    X_test, y_test = data["test"]
 
     lyric_scaler = StandardScaler().fit(X_train)
     joblib.dump(lyric_scaler, LYRICS_SCALER)
@@ -168,7 +172,7 @@ def scale_pca_lyrics(data : dict):
     batch_size = 1000
 
     for i in range(0, X_train.shape[0], batch_size):
-        ipca.partial_fit(X_train[i:i + batch_size])
+        ipca.partial_fit(X_train[i : i + batch_size])
 
     # Transform in batches
     X_train = ipca.transform(X_train)
@@ -186,7 +190,7 @@ def scale_pca_lyrics(data : dict):
     return data
 
 
-def scale(data : dict):
+def scale(data: dict):
     """
     Script that scales the splits, and applies PCA to the lyrics vector.
 
@@ -203,8 +207,8 @@ def scale(data : dict):
 
     # Destructure the dictionary to get data split
     X_train, y_train = data["train"]
-    X_val, y_val     = data["val"]
-    X_test, y_test   = data["test"]
+    X_val, y_val = data["val"]
+    X_test, y_test = data["test"]
 
     audio_scaler = StandardScaler(with_mean=False).fit(X_train)
     joblib.dump(audio_scaler, AUDIO_SCALER)
@@ -221,6 +225,7 @@ def scale(data : dict):
     }
 
     return data
+
 
 def dataset_scaler(audio: np.ndarray, lyrics: np.ndarray):
     """
@@ -279,7 +284,7 @@ def instance_scaler(audio: np.ndarray, lyrics: np.ndarray):
     audio_scaler = joblib.load(AUDIO_SCALER)
     lyric_scaler = joblib.load(LYRICS_SCALER)
 
-    scaled_audio = audio_scaler.transform([audio])
+    scaled_audio = audio_scaler.transform(audio)
     scaled_lyric = lyric_scaler.transform(lyrics)
 
     return scaled_audio, scaled_lyric

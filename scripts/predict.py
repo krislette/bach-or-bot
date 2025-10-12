@@ -37,13 +37,9 @@ def predict_pipeline(audio_file, lyrics):
     # 2.) Preprocess both audio and lyrics
     audio, lyrics = single_preprocessing(audio_file, lyrics)
 
-    # Truncate to 2 minutes to match explain pipeline
-    target_samples = int(2 * 60 * 22050)
-    if len(audio) > target_samples:
-        audio = audio[:target_samples]
-
     # 3.) Call the train method for both models
     audio_features = spectttra_predict(audio)
+    audio_features = audio_features.reshape(1, -1)
     lyrics_features = l2vec_single_train(llm2vec_model, lyrics)
 
     # 4.) Scale the vectors using Z-Score
@@ -51,10 +47,6 @@ def predict_pipeline(audio_file, lyrics):
 
     # 5.) Reduce the lyrics using saved PCA model
     reduced_lyrics = load_pca_model(lyrics_features)
-
-    # 6.) Apply PCA scaler to PCA-reduced lyrics
-    pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
-    reduced_lyrics = pca_scaler.transform(reduced_lyrics)
 
     # 6.) Concatenate the vectors of audio_features + lyrics_features
     results = np.concatenate([audio_features, reduced_lyrics], axis=1)

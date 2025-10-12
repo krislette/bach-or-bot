@@ -71,7 +71,7 @@ class MusicLIMEPredictor:
         processed_audios = []
         processed_lyrics = []
 
-        for i, (text, audio) in enumerate(zip(texts, audios)):
+        for _, (text, audio) in enumerate(zip(texts, audios)):
             processed_audio, processed_lyric = single_preprocessing(audio, text)
             processed_audios.append(processed_audio)
             processed_lyrics.append(processed_lyric)
@@ -127,21 +127,14 @@ class MusicLIMEPredictor:
         pca_model = joblib.load("models/fusion/pca.pkl")
         reduced_lyrics_batch = pca_model.transform(scaled_lyrics_batch)  # (batch, 512)
 
-        # Step 5: Apply scaler to PCA-scaled lyrics batch
-        print("[MusicLIME] Reapplying scaler to PCA-scaled batch")
-        pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
-        reduced_lyrics_batch = pca_scaler.transform(
-            reduced_lyrics_batch
-        )  # (batch, 512)
-
-        # Step 6: Concatenate features
+        # Step 5: Concatenate features
         combined_features_batch = np.concatenate(
             [scaled_audio_batch, reduced_lyrics_batch], axis=1
         )  # (batch, sum of lyrics & audio vector dims)
         scaling_time = time.time() - start_time
         print(green_bold(f"[MusicLIME] Scaling completed in {scaling_time:.2f}s"))
 
-        # Step 7: Batch MLP prediction
+        # Step 6: Batch MLP prediction
         start_time = time.time()
         print("[MusicLIME] Running MLP predictions (batch)...")
         if self.classifier is None:

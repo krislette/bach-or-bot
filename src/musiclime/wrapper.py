@@ -71,7 +71,7 @@ class MusicLIMEPredictor:
         processed_audios = []
         processed_lyrics = []
 
-        for i, (text, audio) in enumerate(zip(texts, audios)):
+        for _, (text, audio) in enumerate(zip(texts, audios)):
             processed_audio, processed_lyric = single_preprocessing(audio, text)
             processed_audios.append(processed_audio)
             processed_lyrics.append(processed_lyric)
@@ -86,6 +86,10 @@ class MusicLIMEPredictor:
         # Step 2: Batch feature extraction
         start_time = time.time()
         print("[MusicLIME] Extracting audio features (batch)...")
+        # TODO: Remove this print
+        print(
+            f"[DEBUG] wrapper.py audio tensor[0] first 10 values: {processed_audios[0].flatten()[:10]}"
+        )
         audio_features_batch = spectttra_train(processed_audios)  # (batch, 384)
         audio_time = time.time() - start_time
         print(
@@ -104,6 +108,18 @@ class MusicLIMEPredictor:
             green_bold(
                 f"[MusicLIME] Lyrics feature extraction completed in {lyrics_time:.2f}s"
             )
+        )
+
+        # TODO: Remove debug prints
+        print(f"[DEBUG] wrapper.py audio features shape: {audio_features_batch.shape}")
+        print(
+            f"[DEBUG] wrapper.py lyrics features shape: {lyrics_features_batch.shape}"
+        )
+        print(
+            f"[DEBUG] wrapper.py audio features[0] first 5: {audio_features_batch[0][:5]}"
+        )
+        print(
+            f"[DEBUG] wrapper.py lyrics features[0] first 5: {lyrics_features_batch[0][:5]}"
         )
 
         # Step 3: Scale and reduce in batch

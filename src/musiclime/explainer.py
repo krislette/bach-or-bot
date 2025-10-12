@@ -214,7 +214,6 @@ class MusicLIMEExplainer:
         # Get predictions
         print(f"[MusicLIME] Getting predictions for {len(texts)} samples...")
         predictions = predict_fn(texts, audios)
-        prediction_time = time.time() - start_time
 
         # Show the original prediction (first row is always the unperturbed original)
         original_prediction = predictions[0]

@@ -32,11 +32,11 @@ RUN python3.11 -m pip install poetry && \
     poetry install --only=main
 
 # Copy application code
-COPY src/ ./src/
-COPY app/ ./app/
-COPY config/ ./config/
 COPY models/ ./models/
+COPY config/ ./config/
+COPY app/ ./app/
 COPY scripts/ ./scripts/
+COPY src/ ./src/
 
 # Create cache directories with proper permissions
 RUN mkdir -p /app/.cache/huggingface /app/.cache/torch /tmp/numba_cache && \

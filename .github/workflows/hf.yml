@@ -19,21 +19,43 @@ jobs:
         git config --global user.email "acellekrislette@gmail.com"
         git config --global user.name "krislette"
 
-        # Clone HF Space
-        git clone https://huggingface.co/spaces/krislette/bach-or-bot hf-space
+        # Deploy to personal space [orig]
+        echo "Deploying to original space..."
+        git clone https://huggingface.co/spaces/krislette/bach-or-bot hf-space-original
 
         # Copy files (excluding .env and other sensitive files)
-        cp -r src/ hf-space/
-        cp -r app/ hf-space/
-        cp -r config/ hf-space/
-        cp -r scripts/ hf-space/
-        cp pyproject.toml hf-space/
-        cp poetry.lock hf-space/
-        cp .dockerignore hf-space/ 
-        cp Dockerfile.hf hf-space/Dockerfile
+        cp -r src/ hf-space-original/
+        cp -r app/ hf-space-original/
+        cp -r config/ hf-space-original/
+        cp -r scripts/ hf-space-original/
+        cp pyproject.toml hf-space-original/
+        cp poetry.lock hf-space-original/
+        cp .dockerignore hf-space-original/
+        cp Dockerfile.hf hf-space-original/Dockerfile
 
-        # Push to HF
-        cd hf-space
+        # Push to original space
+        cd hf-space-original
         git add .
         git commit -m "Auto-deploy from GitHub: ${{ github.sha }}" || echo "No changes to commit"
         git push https://krislette:$HF_TOKEN@huggingface.co/spaces/krislette/bach-or-bot main
+        cd ..
+
+        # Deploy to organization space [new]
+        echo "Deploying to organization space..."
+        git clone https://huggingface.co/spaces/bach-or-bot/main-model hf-space-org
+
+        # Copy files (excluding .env and other sensitive files)
+        cp -r src/ hf-space-org/
+        cp -r app/ hf-space-org/
+        cp -r config/ hf-space-org/
+        cp -r scripts/ hf-space-org/
+        cp pyproject.toml hf-space-org/
+        cp poetry.lock hf-space-org/
+        cp .dockerignore hf-space-org/
+        cp Dockerfile.hf hf-space-org/Dockerfile
+
+        # Push to organization space
+        cd hf-space-org
+        git add .
+        git commit -m "Auto-deploy from GitHub: ${{ github.sha }}" || echo "No changes to commit"
+        git push https://krislette:$HF_TOKEN@huggingface.co/spaces/bach-or-bot/main-model main

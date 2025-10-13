@@ -141,7 +141,9 @@ class OpenUnmixFactorization:
             device=device,
         )
 
-        components = [prediction[key][0].mean(dim=0).numpy() for key in prediction]
+        components = [
+            prediction[key][0].mean(dim=0).cpu().numpy() for key in prediction
+        ]
         names = list(prediction.keys())
 
         return components, names

@@ -128,7 +128,7 @@ def spectttra_predict(audio_tensor):
             melspec = torch.nn.functional.pad(melspec, (0, padding))
 
         if device.type == "cuda":
-            with torch.cuda.amp.autocast(enabled=True):
+            with torch.amp.autocast("cuda", enabled=True):
                 tokens = model(melspec)
                 pooled = tokens.mean(dim=1)
         else:

@@ -9,7 +9,7 @@ from pathlib import Path
 from yt_dlp.utils import DownloadError
 
 
-def load_config():
+def load_server_config():
     """
     Load server configs from YAML file.
     """
@@ -18,6 +18,19 @@ def load_config():
 
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
+    with open(config_path, "r") as file:
+        return yaml.safe_load(file)
+
+
+def load_model_config():
+    """
+    Load model configs from YAML file.
+    """
+    config_path = Path(__file__).parent.parent / "config" / "model_config.yml"
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found : {config_path}")
 
     with open(config_path, "r") as file:
         return yaml.safe_load(file)

@@ -1,3 +1,12 @@
+# Model Metadata (for API infor endpoint)
+metadata:
+  name: "Bach or Bot"
+  version: "1.0.0"
+  architecture: "Multi-Layer Perceptron (MLP)"
+  dataset: "SONICS: Real vs Fake Songs Detection Dataset"
+  accuracy: "97%"
+  last_updated: "2025-10-06"
+
 mlp:
   hidden_layers: [512, 256, 128] # 3 hidden layers
   dropout: [0.5, 0.4, 0.3] # Dropout rates for each layer

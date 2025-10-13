@@ -496,7 +496,7 @@ class MLPClassifier:
 
         confidence = probability * 100 if prediction == 1 else (1 - probability) * 100
 
-        return confidence, prediction, label
+        return confidence, prediction, label, probability
 
     def predict_batch(self, features: np.ndarray, return_details: bool = False) -> Dict:
         """

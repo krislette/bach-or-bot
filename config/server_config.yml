@@ -18,8 +18,12 @@ file_upload:
 # API Configuration
 api:
   cors:
-    # TODO: Change to specific origins in production
-    allow_origins: ["*"]
-    allow_credentials: true
-    allow_methods: ["*"]
-    allow_headers: ["*"]
+    allow_origins: 
+      - "http://localhost:5173"
+      - "https://bach-or-bot.vercel.app"
+    allow_credentials: false
+    allow_methods:
+      - "GET"
+      - "POST"
+    allow_headers:
+      - "Content-Type"

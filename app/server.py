@@ -10,7 +10,7 @@ from app.schemas import (
     PredictionXAIResponse,
     WelcomeResponse,
 )
-from app.utils import load_config, download_youtube_audio
+from app.utils import load_server_config, load_model_config, download_youtube_audio
 
 # Model/XAI-related imports
 from scripts.explain import musiclime
@@ -22,19 +22,22 @@ import librosa
 from typing import Optional, Tuple
 
 
-# Load config at startup
-config = load_config()
+# Load configs at startup
+server_config = load_server_config()
+model_config = load_model_config()
 
 # Extract configuration values
-MAX_FILE_SIZE = config["file_upload"]["max_file_size_mb"] * 1024 * 1024
-MAX_LYRICS_LENGTH = config["file_upload"]["max_lyrics_length"]
-ALLOWED_AUDIO_TYPES = config["file_upload"]["allowed_audio_types"]
+MAX_FILE_SIZE = server_config["file_upload"]["max_file_size_mb"] * 1024 * 1024
+MAX_LYRICS_LENGTH = server_config["file_upload"]["max_lyrics_length"]
+ALLOWED_AUDIO_TYPES = server_config["file_upload"]["allowed_audio_types"]
 
 # Initialize fast API app with extracted config values
-app = FastAPI(title=config["server"]["title"], version=config["server"]["version"])
+app = FastAPI(
+    title=server_config["server"]["title"], version=server_config["server"]["version"]
+)
 
 # Initialize CORS with config values
-cors_config = config["api"]["cors"]
+cors_config = server_config["api"]["cors"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_config["allow_origins"],
@@ -210,19 +213,23 @@ async def get_model_info():
         # Get supported formats from config
         supported_formats = [fmt.replace("audio/", "") for fmt in ALLOWED_AUDIO_TYPES]
 
+        # Get model info from config
+        model_metadata = model_config["metadata"]
+        model_architecture = model_config["mlp"]
+
         return ModelInfoResponse(
             status="success",
             message="Model information retrieved successfully",
-            model_name="Bach or Bot",
-            model_version="1.0.0",  # TODO: Load from model metadata when available
+            model_name=model_metadata["name"],
+            model_version=model_metadata["version"],
             supported_formats=supported_formats,
-            max_file_size_mb=config["file_upload"]["max_file_size_mb"],
+            max_file_size_mb=server_config["file_upload"]["max_file_size_mb"],
             training_info={
-                "dataset": "Human-Composed and AI-generated music samples",
-                "architecture": "To be specified",  # TODO: Update when model is implemented
-                "accuracy": "To be determined",  # TODO: Update with actual metrics
+                "dataset": model_metadata["dataset"],
+                "architecture": f"{model_metadata['architecture']} - Layers: {model_architecture['hidden_layers']}",
+                "accuracy": model_metadata["accuracy"],
             },
-            last_updated="2024-01-01T00:00:00Z",  # TODO: Update with actual timestamp
+            last_updated=model_metadata["last_updated"],
         )
 
     except Exception as e:

@@ -1,6 +1,7 @@
 import time
 import joblib
 import numpy as np
+import torch
 
 from src.preprocessing.preprocessor import single_preprocessing
 from src.spectttra.spectttra_trainer import spectttra_train
@@ -86,7 +87,12 @@ class MusicLIMEPredictor:
         # Step 2: Batch feature extraction
         start_time = time.time()
         print("[MusicLIME] Extracting audio features (batch)...")
-        audio_features_batch = spectttra_train(processed_audios)  # (batch, 384)
+        audio_features_batch = spectttra_train(processed_audios)
+
+        # Clear GPU cache after audio processing
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         audio_time = time.time() - start_time
         print(
             green_bold(
@@ -99,6 +105,11 @@ class MusicLIMEPredictor:
         lyrics_features_batch = l2vec_train(
             self.llm2vec_model, processed_lyrics
         )  # (batch, 2048)
+
+        # Clear GPU cache after lyrics processing
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         lyrics_time = time.time() - start_time
         print(
             green_bold(

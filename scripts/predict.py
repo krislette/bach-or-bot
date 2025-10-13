@@ -61,9 +61,16 @@ def predict_pipeline(audio_file, lyrics):
     classifier.model.eval()
 
     # 8.) Run prediction
-    probability, prediction, label = classifier.predict_single(results.flatten())
+    confidence, prediction, label, probability = classifier.predict_single(
+        results.flatten()
+    )
 
-    return {"probability": probability, "prediction": prediction, "label": label}
+    return {
+        "confidence": confidence,
+        "prediction": prediction,
+        "label": label,
+        "probability": probability,
+    }
 
 
 if __name__ == "__main__":

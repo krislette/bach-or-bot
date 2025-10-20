@@ -14,7 +14,7 @@ from app.utils import load_server_config, load_model_config, download_youtube_au
 
 # Model/XAI-related imports
 from scripts.explain import musiclime
-from scripts.predict import predict_pipeline
+from scripts.predict import predict_multimodal
 
 # Other imports
 import io
@@ -148,7 +148,7 @@ async def predict_music(
             raise HTTPException(status_code=400, detail=f"Invalid audio file: {str(e)}")
 
         # Call MLP predict runner script
-        results = predict_pipeline(audio_data, lyrics)
+        results = predict_multimodal(audio_data, lyrics)
 
         return PredictionResponse(
             status="success",

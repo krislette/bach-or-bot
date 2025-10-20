@@ -288,3 +288,26 @@ def instance_scaler(audio: np.ndarray, lyrics: np.ndarray):
     scaled_lyric = lyric_scaler.transform(lyrics)
 
     return scaled_audio, scaled_lyric
+
+
+def audio_instance_scaler(audio: np.ndarray):
+    """
+    Method to scale the single input audio
+
+    Parameters
+    ----------
+    audio : np.array
+        Instance of an audio feature
+
+    Returns
+    -------
+    scaled_audio : np.array
+        Array of scaled audio feature
+    """
+
+    # Apply scaler to the single inputs
+    audio_scaler = joblib.load(AUDIO_SCALER)
+
+    scaled_audio = audio_scaler.transform(audio)
+
+    return scaled_audio

@@ -128,7 +128,7 @@ def spectttra_predict(audio_tensor):
             melspec = torch.nn.functional.pad(melspec, (0, padding))
 
         if device.type == "cuda":
-            with torch.cuda.amp.autocast(enabled=True):
+            with torch.amp.autocast("cuda", enabled=True):
                 tokens = model(melspec)
                 pooled = tokens.mean(dim=1)
         else:
@@ -166,35 +166,50 @@ def spectttra_train(audio_tensors):
     model = _MODEL
     device = _DEVICE
 
-    # Refactors the loop to be a much faster single-batch operation
-    try:
-        waveforms_batch = torch.cat(audio_tensors, dim=0).to(
-            device, dtype=torch.float32
-        )
-    except Exception as e:
+    # Chunk processing: Process in smaller batches
+    chunk_size = 50
+    all_embeddings = []
+
+    for i in range(0, len(audio_tensors), chunk_size):
+        chunk = audio_tensors[i : i + chunk_size]
         print(
-            f"[INFO] Error during tensor concatenation, falling back to loop. Fix preprocessing for speed. Error: {e}"
+            f"[INFO] Processing chunk {i//chunk_size + 1}/{(len(audio_tensors)-1)//chunk_size + 1} ({len(chunk)} samples)"
         )
-        batch_list = [spectttra_predict(w) for w in audio_tensors]
-        return np.array(batch_list)
 
-    with torch.no_grad():
-        melspec = feat_ext(waveforms_batch)
+        try:
+            waveforms_batch = torch.cat(chunk, dim=0).to(device).float()
+        except Exception as e:
+            print(
+                f"[INFO] Error during tensor concatenation, falling back to loop. Error: {e}"
+            )
+            batch_list = [spectttra_predict(w) for w in chunk]
+            all_embeddings.extend(batch_list)
+            continue
 
-        # Ensure melspec shape matches model's expectation
-        expected_frames = model.input_temp_dim  # expected_frames is 3744
-        if melspec.shape[2] > expected_frames:
-            melspec = melspec[:, :, :expected_frames]
-        elif melspec.shape[2] < expected_frames:
-            padding = expected_frames - melspec.shape[2]
-            melspec = torch.nn.functional.pad(melspec, (0, padding))
+        with torch.no_grad():
+            melspec = feat_ext(waveforms_batch)
 
-        if device.type == "cuda":
-            with torch.cuda.amp.autocast(enabled=True):
+            # Ensure melspec shape matches model's expectation
+            expected_frames = model.input_temp_dim
+            if melspec.shape[2] > expected_frames:
+                melspec = melspec[:, :, :expected_frames]
+            elif melspec.shape[2] < expected_frames:
+                padding = expected_frames - melspec.shape[2]
+                melspec = torch.nn.functional.pad(melspec, (0, padding))
+
+            if device.type == "cuda":
+                with torch.cuda.amp.autocast(enabled=True):
+                    tokens = model(melspec)
+                    pooled = tokens.mean(dim=1)
+            else:
                 tokens = model(melspec)
                 pooled = tokens.mean(dim=1)
-        else:
-            tokens = model(melspec)
-            pooled = tokens.mean(dim=1)
 
-    return pooled.cpu().numpy()
+        chunk_embeddings = pooled.cpu().numpy()
+        all_embeddings.append(chunk_embeddings)
+
+        # Clear GPU cache after each chunk
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
+
+    return np.vstack(all_embeddings)

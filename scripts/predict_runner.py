@@ -1,5 +1,5 @@
 import librosa
-from scripts.predict import predict_multimodal, predict_audio
+from scripts.predict import predict_multimodal, predict_unimodal
 
 
 def predict_multimodal_runner(sample: str):
@@ -21,7 +21,7 @@ def predict_multimodal_runner(sample: str):
     print(f"Prediction: {prediction}")
 
 
-def predict_audio_runner(sample: str):
+def predict_unimodal_runner(sample: str):
     # Load test audio and lyrics
     audio_path = f"data/raw/{sample}.mp3"
 
@@ -29,7 +29,7 @@ def predict_audio_runner(sample: str):
     audio_data, sr = librosa.load(audio_path)
 
     print("Running prediction pipeline...")
-    prediction = predict_audio(audio_data)
+    prediction = predict_unimodal(audio_data)
 
     print(f"\n=== PREDICTION RESULT ===")
     print(f"Prediction: {prediction}")
@@ -38,4 +38,4 @@ def predict_audio_runner(sample: str):
 if __name__ == "__main__":
     sample = "fake_sunshine"
 
-    predict_audio_runner(sample)
+    predict_unimodal_runner(sample)

@@ -72,7 +72,7 @@ def predict_multimodal(audio_file, lyrics):
     }
 
 
-def predict_audio(audio_file):
+def predict_unimodal(audio_file):
     """
     Predict script of AUDIO only which includes preprocessing, feature extraction, and
     training the MLP model for a single data sample.

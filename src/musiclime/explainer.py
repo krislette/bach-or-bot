@@ -57,9 +57,15 @@ class MusicLIMEExplainer:
         num_samples=1000,
         labels=(1,),
         temporal_segments=10,
+        modality="both",
     ):
         """
-        Generate LIME explanations for a music instance using audio and lyrics.
+        Generate LIME explanations for a music instance using audio and/or lyrics.
+
+        This method creates local explanations by perturbing audio components (via source
+        separation) and/or lyrics lines, then analyzing their impact on model predictions.
+        Supports three modality modes: 'both' (multimodal), 'audio' (audio-only), and
+        'lyrical' (lyrics-only) following the original MusicLIME paper implementation.
 
         Parameters
         ----------
@@ -75,18 +81,26 @@ class MusicLIMEExplainer:
             Target labels to explain (0=AI-Generated, 1=Human-Composed)
         temporal_segments : int, default=10
             Number of temporal segments for audio factorization
+        modality : str, default='both'
+            Explanation modality: 'both' (multimodal), 'audio' (audio-only), or 'lyrical' (lyrics-only)
 
         Returns
         -------
         MusicLIMEExplanation
-            Explanation object containing feature importance weights
+            Explanation object containing feature importance weights and metadata
         """
+        # Validation for modality choice
+        if modality not in ["both", "audio", "lyrical"]:
+            raise ValueError("Set modality argument to 'both', 'audio', 'lyrical'.")
+
         # These are for debugging only I have to see THAT progress
         print("[MusicLIME] Starting MusicLIME explanation...")
         print(
             f"[MusicLIME] Audio length: {len(audio)/22050:.1f}s, Temporal segments: {temporal_segments}"
         )
         print(f"[MusicLIME] Lyrics lines: {len(lyrics.split(chr(10)))}")
+        print("[MusicLIME] Starting MusicLIME explanation...")
+        print(f"[MusicLIME] Modality: {modality}")
 
         # Create factorizations
         print("[MusicLIME] Creating audio factorization (source separation)...")
@@ -111,7 +125,7 @@ class MusicLIMEExplainer:
         # Generate perturbations and get predictions
         print(f"[MusicLIME] Generating {num_samples} perturbations...")
         data, predictions, distances = self._generate_neighborhood(
-            audio_factorization, text_factorization, predict_fn, num_samples
+            audio_factorization, text_factorization, predict_fn, num_samples, modality
         )
 
         # LIME fitting, create explanation object
@@ -140,33 +154,55 @@ class MusicLIMEExplainer:
 
         return explanation
 
-    def _generate_neighborhood(self, audio_fact, text_fact, predict_fn, num_samples):
+    def _generate_neighborhood(
+        self, audio_fact, text_fact, predict_fn, num_samples, modality="both"
+    ):
         """
-        Generate perturbed samples and predictions for LIME explanation.
+        Generate perturbed samples and predictions for LIME explanation based on modality.
+
+        Creates binary perturbation masks and generates corresponding perturbed audio-text
+        pairs. The perturbation strategy depends on the specified modality:
+        - 'both': Perturbs both audio components and lyrics lines independently
+        - 'audio': Perturbs only audio components, keeps original lyrics constant
+        - 'lyrical': Perturbs only lyrics lines, keeps original audio constant
 
         Parameters
         ----------
         audio_fact : OpenUnmixFactorization
-            Audio factorization object for source separation
+            Audio factorization object for source separation-based perturbations
         text_fact : LineIndexedString
-            Text factorization object for line-based perturbations
+            Text factorization object for line-based lyrics perturbations
         predict_fn : callable
-            Model prediction function
+            Model prediction function that processes (texts, audios) batches
         num_samples : int
-            Number of perturbations to generate
+            Number of perturbation samples to generate for LIME
+        modality : str, default='both'
+            Perturbation modality: 'both', 'audio', or 'lyrical'
 
         Returns
         -------
         data : ndarray
-            Binary perturbation masks (num_samples, total_features)
+            Binary perturbation masks of shape (num_samples, total_features)
         predictions : ndarray
-            Model predictions for perturbed instances
+            Model predictions for perturbed instances of shape (num_samples, n_classes)
         distances : ndarray
-            Cosine distances from original instance
+            Cosine distances from original instance of shape (num_samples,)
+
+        Notes
+        -----
+        The first sample (index 0) is always the original unperturbed instance.
+        Feature ordering: [audio_components, lyrics_lines] for 'both' modality.
         """
         n_audio = audio_fact.get_number_components()
         n_text = text_fact.num_words()
-        total_features = n_audio + n_text
+
+        # Set total features based on modality
+        if modality == "both":
+            total_features = n_audio + n_text
+        elif modality == "audio":
+            total_features = n_audio
+        elif modality == "lyrical":
+            total_features = n_text
 
         print(
             f"[MusicLIME] Total features: {total_features} ({n_audio} audio + {n_text} text)"
@@ -187,22 +223,46 @@ class MusicLIMEExplainer:
         texts = []
         audios = []
 
-        for i, row in enumerate(data):
-            # Progress check for every hundred samples
-            if i % 100 == 0:
-                print(f"[MusicLIME]     Progress: {i}/{num_samples} samples")
+        for _, row in enumerate(data):
+            if modality == "both":
+                # Audio perturbation & reconstruction
+                audio_mask = row[:n_audio]
+                active_audio_components = np.where(audio_mask != 0)[0]
+                perturbed_audio = audio_fact.compose_model_input(
+                    active_audio_components
+                )
+                audios.append(perturbed_audio)
 
-            # Audio perturbation & reconstruction
-            audio_mask = row[:n_audio]
-            active_audio_components = np.where(audio_mask != 0)[0]
-            perturbed_audio = audio_fact.compose_model_input(active_audio_components)
-            audios.append(perturbed_audio)
+                # Text perturbation & reconstruction
+                text_mask = row[n_audio:]
+                inactive_lines = np.where(text_mask == 0)[0]
+                perturbed_text = text_fact.inverse_removing(inactive_lines)
+                texts.append(perturbed_text)
 
-            # Text perturbation & reconstruction
-            text_mask = row[n_audio:]
-            inactive_lines = np.where(text_mask == 0)[0]
-            perturbed_text = text_fact.inverse_removing(inactive_lines)
-            texts.append(perturbed_text)
+            elif modality == "audio":
+                # Audio perturbation, original lyrics
+                active_audio_components = np.where(row != 0)[0]
+                perturbed_audio = audio_fact.compose_model_input(
+                    active_audio_components
+                )
+                audios.append(perturbed_audio)
+
+                # Use original lyrics (no perturbation)
+                perturbed_text = text_fact.inverse_removing(
+                    []
+                )  # Empty array = no removal
+                texts.append(perturbed_text)
+
+            elif modality == "lyrical":
+                # Original audio, lyrics perturbation
+                all_audio_components = np.arange(n_audio)  # Use all audio components
+                perturbed_audio = audio_fact.compose_model_input(all_audio_components)
+                audios.append(perturbed_audio)
+
+                # Perturb lyrics
+                inactive_lines = np.where(row == 0)[0]
+                perturbed_text = text_fact.inverse_removing(inactive_lines)
+                texts.append(perturbed_text)
 
         perturbation_time = time.time() - start_time
         print(
@@ -221,7 +281,7 @@ class MusicLIMEExplainer:
         confidence = original_prediction[predicted_class]
 
         # Print original prediction
-        print(f"[MusicLIME] Original Prediction:")
+        print("[MusicLIME] Original Prediction:")
         print(
             f"  Raw probabilities: [AI: {original_prediction[0]:.3f}, Human: {original_prediction[1]:.3f}]"
         )

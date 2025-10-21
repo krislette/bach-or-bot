@@ -120,6 +120,30 @@ def single_preprocessing(audio, lyric: str):
     return processed_song, processed_lyric
 
 
+def single_audio_preprocessing(audio):
+    """
+    Preprocesses a single record of audio
+
+    Parameters
+    ----------
+    audio : audio_object
+        Audio object file
+
+    Returns
+    -------
+    processed_song : tensor
+        Tensor version of the audio
+    
+    """
+    # Instantiate preprocessor classes
+    audio_preprocessor = AudioPreprocessor(script="predict")
+
+    # Preprocess both song and lyrics
+    processed_song = audio_preprocessor(file=audio)
+
+    return processed_song
+
+
 def dataset_read(batch_size=20):
     """
     Reads the main dataset, splits it into the train/test/valid split, and computes

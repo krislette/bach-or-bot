@@ -162,7 +162,7 @@ class MusicLIMEPredictor:
             self.classifier = build_mlp(
                 input_dim=combined_features_batch.shape[1], config=self.config
             )
-            self.classifier.load_model("models/mlp/mlp_best.pth")
+            self.classifier.load_model("models/mlp/mlp_best_multimodal.pth")
 
         probabilities, predictions = self.classifier.predict(combined_features_batch)
 
@@ -296,7 +296,7 @@ class AudioOnlyPredictor:
             self.classifier = build_mlp(
                 input_dim=scaled_audio_batch.shape[1], config=self.config
             )
-            self.classifier.load_model("models/spectttra/mlp_best.pth")
+            self.classifier.load_model("models/mlp/mlp_best_unimodal.pth")
 
         probabilities, predictions = self.classifier.predict(scaled_audio_batch)
 

@@ -1,4 +1,7 @@
-from src.preprocessing.preprocessor import single_preprocessing, single_audio_preprocessing
+from src.preprocessing.preprocessor import (
+    single_preprocessing,
+    single_audio_preprocessing,
+)
 from src.spectttra.spectttra_trainer import spectttra_predict
 from src.llm2vectrain.model import load_llm2vec_model
 from src.llm2vectrain.llm2vec_trainer import l2vec_single_train, load_pca_model
@@ -55,7 +58,7 @@ def predict_multimodal(audio_file, lyrics):
     classifier = build_mlp(input_dim=results.shape[1], config=config)
 
     # 7.) Load trained weights
-    model_path = "models/mlp/mlp_best.pth"
+    model_path = "models/mlp/mlp_best_multimodal.pth"
     classifier.load_model(model_path)
     classifier.model.eval()
 
@@ -106,7 +109,7 @@ def predict_unimodal(audio_file):
     classifier = build_mlp(input_dim=audio_features.shape[1], config=config)
 
     # 6.) Load trained weights
-    model_path = "models/spectttra/mlp_best.pth"
+    model_path = "models/mlp/mlp_best_unimodal.pth"
     classifier.load_model(model_path)
     classifier.model.eval()
 

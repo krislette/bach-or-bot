@@ -3,7 +3,10 @@ import joblib
 import numpy as np
 import torch
 
-from src.preprocessing.preprocessor import single_preprocessing
+from src.preprocessing.preprocessor import (
+    single_preprocessing,
+    single_audio_preprocessing,
+)
 from src.spectttra.spectttra_trainer import spectttra_train
 from src.llm2vectrain.llm2vec_trainer import l2vec_train
 from src.llm2vectrain.model import load_llm2vec_model
@@ -159,7 +162,7 @@ class MusicLIMEPredictor:
             self.classifier = build_mlp(
                 input_dim=combined_features_batch.shape[1], config=self.config
             )
-            self.classifier.load_model("models/mlp/mlp_best.pth")
+            self.classifier.load_model("models/mlp/mlp_best_multimodal.pth")
 
         probabilities, predictions = self.classifier.predict(combined_features_batch)
 
@@ -172,10 +175,150 @@ class MusicLIMEPredictor:
         total_time = (
             preprocessing_time + audio_time + lyrics_time + scaling_time + mlp_time
         )
-        print(f"[MusicLIME] Batch processing complete!")
+        print("[MusicLIME] Batch processing complete!")
         print(
             green_bold(
                 f"[MusicLIME] Total time: {total_time:.2f}s (Preprocessing: {preprocessing_time:.2f}s, Audio: {audio_time:.2f}s, Lyrics: {lyrics_time:.2f}s, Scaling: {scaling_time:.2f}s, MLP: {mlp_time:.2f}s)"
+            )
+        )
+
+        return np.array(batch_results)
+
+
+class AudioOnlyPredictor:
+    """
+    Audio-only prediction wrapper for MusicLIME explanations.
+
+    Integrates the audio-only Bach or Bot pipeline (SpecTTTra + MLP) into a single
+    callable for LIME perturbation processing. Optimized for batch processing of
+    multiple perturbed audio samples while ignoring lyrics input. Mirrors the
+    multimodal MusicLIMEPredictor but processes only audio features.
+
+    This predictor is specifically designed for audio-only explainability where
+    lyrics are kept constant and only audio components are perturbed through
+    source separation techniques.
+
+    Attributes
+    ----------
+    classifier : MLPClassifier or None
+        Lazy-loaded MLP classifier for audio-only predictions
+    config : dict
+        Model configuration parameters loaded from config files
+    """
+
+    def __init__(self):
+        """
+        Initialize audio-only prediction wrapper.
+
+        Loads model configuration for batch processing of perturbed audio samples
+        during LIME explanation. The MLP classifier is lazy-loaded on first use
+        to optimize memory usage.
+        """
+        print("[MusicLIME] Loading models for Audio-Only MusicLIME...")
+        config = load_config("config/model_config.yml")
+        self.classifier = None
+        self.config = config
+
+    def __call__(self, texts, audios):
+        """
+        Batch prediction function for audio-only MusicLIME perturbations.
+
+        Processes multiple perturbed audio samples through the audio-only pipeline:
+        preprocessing -> SpecTTTra feature extraction -> scaling -> MLP prediction.
+        Text inputs are ignored as this is audio-only mode. Optimized for batch
+        processing of LIME perturbations with detailed timing analysis.
+
+        Parameters
+        ----------
+        texts : list of str
+            List of text strings (ignored in audio-only mode, kept for API compatibility)
+        audios : list of array-like
+            List of perturbed audio waveforms from LIME perturbations
+
+        Returns
+        -------
+        ndarray
+            Prediction probabilities in format [[P(AI), P(Human)], ...]
+            for each input audio sample, shape (n_samples, 2)
+        """
+        print(
+            f"[MusicLIME] Processing {len(audios)} samples with batch functions (audio-only mode)..."
+        )
+
+        # Step 1: Preprocess all audio samples
+        start_time = time.time()
+        print("[MusicLIME] Preprocessing audio samples...")
+        processed_audios = []
+
+        for audio in audios:
+            processed_audio = single_audio_preprocessing(audio)
+            processed_audios.append(processed_audio)
+
+        preprocessing_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Audio preprocessing completed in {preprocessing_time:.2f}s"
+            )
+        )
+
+        # Step 2: Batch audio feature extraction
+        start_time = time.time()
+        print("[MusicLIME] Extracting audio features (batch)...")
+        audio_features_batch = spectttra_train(processed_audios)
+
+        # Clear GPU cache after audio processing
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        audio_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Audio feature extraction completed in {audio_time:.2f}s"
+            )
+        )
+
+        # Step 3: Scale audio features in batch
+        start_time = time.time()
+        print("[MusicLIME] Scaling audio features (batch)...")
+
+        # Load the audio scaler
+        audio_scaler = joblib.load("models/fusion/audio_scaler.pkl")
+        scaled_audio_batch = audio_scaler.transform(audio_features_batch)
+
+        scaling_time = time.time() - start_time
+        print(green_bold(f"[MusicLIME] Audio scaling completed in {scaling_time:.2f}s"))
+
+        # Step 4: Audio-only MLP prediction
+        start_time = time.time()
+        print("[MusicLIME] Running audio-only MLP predictions (batch)...")
+
+        if self.classifier is None:
+            self.classifier = build_mlp(
+                input_dim=scaled_audio_batch.shape[1], config=self.config
+            )
+            self.classifier.load_model("models/mlp/mlp_best_unimodal.pth")
+
+        probabilities, predictions = self.classifier.predict(scaled_audio_batch)
+
+        # Clear GPU cache after MLP processing
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        # Convert to expected format
+        batch_results = [[1 - prob, prob] for prob in probabilities]
+        mlp_time = time.time() - start_time
+        print(
+            green_bold(
+                f"[MusicLIME] Audio-only MLP prediction completed in {mlp_time:.2f}s"
+            )
+        )
+
+        # Total time summary
+        total_time = preprocessing_time + audio_time + scaling_time + mlp_time
+        print("[MusicLIME] Audio-only batch processing complete!")
+        print(
+            green_bold(
+                f"[MusicLIME] Total time: {total_time:.2f}s (Preprocessing: {preprocessing_time:.2f}s, Audio: {audio_time:.2f}s, Scaling: {scaling_time:.2f}s, MLP: {mlp_time:.2f}s)"
             )
         )
 

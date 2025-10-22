@@ -40,8 +40,17 @@ class PredictionXAIResponse(BaseModel):
     results: Optional[Dict] = None
 
 
-# Pydantic model for the error response
-class ErrorResponse(BaseModel):
-    status: str = "error"
-    code: int
-    message: str
+class AudioOnlyPredictionResponse(BaseModel):
+    status: str
+    audio_file_name: str
+    audio_content_type: str
+    audio_file_size: int
+    results: dict
+
+
+class AudioOnlyPredictionXAIResponse(BaseModel):
+    status: str
+    audio_file_name: str
+    audio_content_type: str
+    audio_file_size: int
+    results: dict

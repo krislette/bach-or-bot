@@ -18,9 +18,10 @@ file_upload:
 # API Configuration
 api:
   cors:
-    allow_origins: 
+    allow_origins:
       - "http://localhost:5173"
       - "https://bach-or-bot.vercel.app"
+      - "https://bach-or-bot-tool.vercel.app"
     allow_credentials: false
     allow_methods:
       - "GET"

@@ -10,13 +10,15 @@ from app.schemas import (
     AudioOnlyPredictionResponse,
     AudioOnlyPredictionXAIResponse,
     WelcomeResponse,
+    CombinedExplanationResponse,
+    CombinedPredictionResponse,
 )
 from app.utils import load_server_config, load_model_config
 from app.validators import validate_lyrics, validate_audio_source, validate_audio_only
 
 # Model/XAI-related imports
-from scripts.explain import musiclime_multimodal, musiclime_unimodal
-from scripts.predict import predict_multimodal, predict_unimodal
+from scripts.explain import musiclime_multimodal, musiclime_unimodal, musiclime_combined
+from scripts.predict import predict_multimodal, predict_unimodal, predict_combined
 
 # Other imports
 import io
@@ -64,6 +66,8 @@ def root():
             "/api/v1/explain/multimodal": "POST endpoint for multimodal explainability",
             "/api/v1/predict/audio": "POST endpoint for audio-only prediction",
             "/api/v1/explain/audio": "POST endpoint for audio-only explainability",
+            "/api/v1/predict/combined": "POST endpoint for BOTH predictions",
+            "/api/v1/explain/combined": "POST endpoint for BOTH explanations",
         },
     )
 
@@ -206,6 +210,69 @@ async def explain_audio_only_endpoint(
 
         return AudioOnlyPredictionXAIResponse(
             status="success",
+            audio_file_name=audio_file_name,
+            audio_content_type=audio_content_type,
+            audio_file_size=len(audio_content),
+            results=results,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# New combined endpoints (multimodal and audio-only)
+@app.post("/api/v1/predict/combined", response_model=CombinedPredictionResponse)
+async def predict_combined_endpoint(
+    lyrics: str = Depends(validate_lyrics),
+    audio_data_tuple: Tuple = Depends(validate_audio_source),
+):
+    """Combined multimodal and audio-only prediction endpoint (optimized)."""
+    try:
+        audio_content, audio_file_name, audio_content_type = audio_data_tuple
+
+        try:
+            audio_data, sr = librosa.load(io.BytesIO(audio_content))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid audio file: {str(e)}")
+
+        # Generate both predictions with shared audio processing
+        results = predict_combined(audio_data, lyrics)
+
+        return CombinedPredictionResponse(
+            status="success",
+            lyrics=lyrics,
+            audio_file_name=audio_file_name,
+            audio_content_type=audio_content_type,
+            audio_file_size=len(audio_content),
+            results=results,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/explain/combined", response_model=CombinedExplanationResponse)
+async def explain_combined_endpoint(
+    lyrics: str = Depends(validate_lyrics),
+    audio_data_tuple: Tuple = Depends(validate_audio_source),
+):
+    """Combined multimodal and audio-only explanation endpoint (optimized)."""
+    try:
+        audio_content, audio_file_name, audio_content_type = audio_data_tuple
+
+        try:
+            audio_data, sr = librosa.load(io.BytesIO(audio_content))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid audio file: {str(e)}")
+
+        # Generate both explanations with single source separation
+        results = musiclime_combined(audio_data, lyrics)
+
+        return CombinedExplanationResponse(
+            status="success",
+            lyrics=lyrics,
             audio_file_name=audio_file_name,
             audio_content_type=audio_content_type,
             audio_file_size=len(audio_content),

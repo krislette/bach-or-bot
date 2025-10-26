@@ -5,7 +5,7 @@ description = "A binary classifier to distinguish between Human-composed and AI-
 authors = [
     {name = "Acelle Krislette Rosales",email = "acellekrislette@gmail.com"},
     {name = "Hans Christian Queja",email = "hansqueja8@gmail.com"},
-    {name = "Regina Bonfiacio",email = "bonifacioregina06@gmail.com"},
+    {name = "Regina Bonifacio",email = "bonifacioregina06@gmail.com"},
     {name = "Sean Matthew Sinalubong",email = "s3amatth3wsinalubong@gmail.com"},
     {name = "Syruz Ken Domingo",email = "syruzkenc.domingo@gmail.com"},
 ]

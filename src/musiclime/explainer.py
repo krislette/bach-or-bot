@@ -154,6 +154,85 @@ class MusicLIMEExplainer:
 
         return explanation
 
+    def explain_instance_with_factorization(
+        self,
+        audio_factorization,
+        text_factorization,
+        predict_fn,
+        num_samples=1000,
+        labels=(1,),
+        modality="both",
+    ):
+        """
+        Generate LIME explanations using pre-computed factorizations.
+
+        This method allows reusing expensive source separation across multiple explanations,
+        significantly improving performance when generating both multimodal and audio-only
+        explanations for the same audio file.
+
+        Parameters
+        ----------
+        audio_factorization : OpenUnmixFactorization
+            Pre-computed audio source separation components
+        text_factorization : LineIndexedString
+            Pre-computed text line factorization
+        predict_fn : callable
+            Prediction function that takes (texts, audios) and returns probabilities
+        num_samples : int, default=1000
+            Number of perturbed samples to generate for LIME
+        labels : tuple, default=(1,)
+            Target labels to explain (0=AI-Generated, 1=Human-Composed)
+        modality : str, default='both'
+            Explanation modality: 'both', 'audio', or 'lyrical'
+
+        Returns
+        -------
+        MusicLIMEExplanation
+            Explanation object containing feature importance weights and metadata
+
+        Raises
+        ------
+        ValueError
+            If modality is not one of ['both', 'audio', 'lyrical']
+        """
+        # Validate modality
+        if modality not in ["both", "audio", "lyrical"]:
+            raise ValueError('Set modality argument to "both", "audio" or "lyrical".')
+
+        print("[MusicLIME] Using pre-computed factorizations (optimized mode)")
+        print(f"[MusicLIME] Modality: {modality}")
+        print(
+            f"[MusicLIME] Audio components: {audio_factorization.get_number_components()}"
+        )
+        print(f"[MusicLIME] Text lines: {text_factorization.num_words()}")
+
+        # Generate perturbations and get predictions
+        print(f"[MusicLIME] Generating {num_samples} perturbations...")
+        data, predictions, distances = self._generate_neighborhood(
+            audio_factorization, text_factorization, predict_fn, num_samples, modality
+        )
+
+        # LIME fitting, create explanation object
+        start_time = time.time()
+        print("[MusicLIME] Fitting LIME model...")
+        explanation = MusicLIMEExplanation(
+            audio_factorization,
+            text_factorization,
+            data,
+            predictions,
+            distances,
+            modality=modality,
+        )
+
+        # Fit the explanation for the requested labels
+        for label in labels:
+            explanation.fit_explanation(label)
+
+        lime_time = time.time() - start_time
+        print(green_bold(f"[MusicLIME] LIME fitting completed in {lime_time:.2f}s"))
+
+        return explanation
+
     def _generate_neighborhood(
         self, audio_fact, text_fact, predict_fn, num_samples, modality="both"
     ):

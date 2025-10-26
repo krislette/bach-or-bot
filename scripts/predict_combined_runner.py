@@ -40,16 +40,9 @@ def predict_combined_runner(sample: str):
     print("=== PERFORMANCE SUMMARY ===")
     print(f"{'='*50}")
     perf = result["performance"]
-    print(
-        f"Audio preprocessing: {perf['audio_preprocessing_time_seconds']:.2f}s (shared)"
-    )
-    print(
-        f"Audio features: {perf['audio_feature_extraction_time_seconds']:.2f}s (shared)"
-    )
     print(f"Multimodal prediction: {perf['multimodal_time_seconds']:.2f}s")
     print(f"Audio-only prediction: {perf['audio_only_time_seconds']:.2f}s")
     print(f"Total time: {perf['total_time_seconds']:.2f}s")
-    print(f"Audio features reused: {perf['audio_features_reused']}")
 
     print(f"\n{'='*50}")
     print("=== COMPARISON ===")
@@ -61,9 +54,9 @@ def predict_combined_runner(sample: str):
     print(f"Probability difference: {prob_diff:.4f}")
 
     if mm["prediction"] == au["prediction"]:
-        print("✅ Both modalities agree on the prediction")
+        print("Both modalities agree on the prediction")
     else:
-        print("❌ Modalities disagree on the prediction")
+        print("Modalities disagree on the prediction")
 
 
 if __name__ == "__main__":

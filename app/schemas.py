@@ -54,3 +54,21 @@ class AudioOnlyPredictionXAIResponse(BaseModel):
     audio_content_type: str
     audio_file_size: int
     results: dict
+
+
+class CombinedExplanationResponse(BaseModel):
+    status: str
+    lyrics: str
+    audio_file_name: str
+    audio_content_type: str
+    audio_file_size: int
+    results: dict  # Contains both multimodal and audio_only results
+
+
+class CombinedPredictionResponse(BaseModel):
+    status: str
+    lyrics: str
+    audio_file_name: str
+    audio_content_type: str
+    audio_file_size: int
+    results: dict  # Contains both multimodal and audio_only predictions

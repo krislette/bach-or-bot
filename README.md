@@ -526,7 +526,7 @@ If you use this work in your research, please cite:
 
 ## Acknowledgments
 
-We acknowledge the research contributions that made this project possible, particularly the authors of SpecTTTra, LLM2Vec, and MusicLIME. This work builds upon their foundational research in audio processing, natural language processing, and explainable AI for music understanding.
+We acknowledge the research contributions that made this project possible, particularly the authors of [SpecTTTra](https://arxiv.org/abs/2408.14080), [LLM2Vec](https://arxiv.org/abs/2404.05961), and [MusicLIME](https://arxiv.org/abs/2409.10496). This work builds upon their foundational research in audio processing, natural language processing, and explainable AI for music understanding.
 
 Special thanks to the open-source community for providing the tools and libraries that enabled this research, including OpenUnmix for source separation, LIME for explainability frameworks, and the broader PyTorch ecosystem for deep learning infrastructure.
 

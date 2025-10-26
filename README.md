@@ -536,6 +536,6 @@ For questions or collaboration inquiries, please contact the development team th
 
 ## License
 
-Distributed under the [MIT](https://choosealicense.com/licenses/mit/) License. See [LICENSE](LICENSE) for more information.
+Distributed under the [Apache 2.0](https://choosealicense.com/licenses/apache-2.0/) License. See [LICENSE](LICENSE) for more information.
 
 <p align="right">[<a href="#readme-top">Back to top</a>]</p>

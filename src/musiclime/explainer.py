@@ -167,7 +167,7 @@ class MusicLIMEExplainer:
         Generate LIME explanations using pre-computed factorizations.
 
         This method allows reusing expensive source separation across multiple explanations,
-        significantly improving performance when generating both multimodal and audio-only
+        which significantly improves performance when generating both multimodal and audio-only
         explanations for the same audio file.
 
         Parameters
@@ -220,16 +220,22 @@ class MusicLIMEExplainer:
             text_factorization,
             data,
             predictions,
-            distances,
-            modality=modality,
         )
 
-        # Fit the explanation for the requested labels
         for label in labels:
-            explanation.fit_explanation(label)
+            print(f"[MusicLIME] Explaining label {label}...")
+            (
+                explanation.intercept[label],
+                explanation.local_exp[label],
+                explanation.score[label],
+                explanation.local_pred[label],
+            ) = self.base.explain_instance_with_data(
+                data, predictions, distances, label, num_features=20
+            )
 
         lime_time = time.time() - start_time
         print(green_bold(f"[MusicLIME] LIME fitting completed in {lime_time:.2f}s"))
+        print("[MusicLIME] MusicLIME explanation complete!")
 
         return explanation
 

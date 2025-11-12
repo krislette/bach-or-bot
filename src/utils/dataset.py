@@ -115,12 +115,12 @@ def scale_pca(data: dict):
     X_test_lyrics = ipca.transform(X_test_lyrics)
     X_val_lyrics = ipca.transform(X_val_lyrics)
 
-    # Apply scaler to the PCA output
-    pca_lyric_scaler = StandardScaler().fit(X_train_lyrics)
+    # NOTE: Scaling after PCA produces underperforming models compared to non-scaling. One can toggle it on for experimentation/testing purposes.
+    #pca_lyric_scaler = StandardScaler().fit(X_train_lyrics)
 
-    X_train_lyrics = pca_lyric_scaler.transform(X_train_lyrics)
-    X_test_lyrics = pca_lyric_scaler.transform(X_test_lyrics)
-    X_val_lyrics = pca_lyric_scaler.transform(X_val_lyrics)
+    #X_train_lyrics = pca_lyric_scaler.transform(X_train_lyrics)
+    #X_test_lyrics = pca_lyric_scaler.transform(X_test_lyrics)
+    #X_val_lyrics = pca_lyric_scaler.transform(X_val_lyrics)
 
     # Concatenate them back to their original form, but scaled
     X_train = np.concatenate([X_train_audio, X_train_lyrics], axis=1)

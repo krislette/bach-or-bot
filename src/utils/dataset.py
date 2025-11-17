@@ -1,13 +1,12 @@
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from src.utils.config_loader import AUDIO_SCALER, LYRICS_SCALER, PCA_SCALER
+from src.utils.config_loader import AUDIO_SCALER, LYRICS_SCALER #, PCA_SCALER
 from sklearn.decomposition import IncrementalPCA
 from src.utils.config_loader import PCA_MODEL
 
 import joblib
 import numpy as np
 import logging
-import pandas as pd
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -115,12 +114,13 @@ def scale_pca(data: dict):
     X_test_lyrics = ipca.transform(X_test_lyrics)
     X_val_lyrics = ipca.transform(X_val_lyrics)
 
-    # NOTE: Scaling after PCA produces underperforming models compared to non-scaling. One can toggle it on for experimentation/testing purposes.
-    #pca_lyric_scaler = StandardScaler().fit(X_train_lyrics)
+    # NOTE: Scaling after PCA produces underperforming models compared to non-scaling.
+    # One can toggle it on for experimentation/testing purposes.
+    # pca_lyric_scaler = StandardScaler().fit(X_train_lyrics)
 
-    #X_train_lyrics = pca_lyric_scaler.transform(X_train_lyrics)
-    #X_test_lyrics = pca_lyric_scaler.transform(X_test_lyrics)
-    #X_val_lyrics = pca_lyric_scaler.transform(X_val_lyrics)
+    # X_train_lyrics = pca_lyric_scaler.transform(X_train_lyrics)
+    # X_test_lyrics = pca_lyric_scaler.transform(X_test_lyrics)
+    # X_val_lyrics = pca_lyric_scaler.transform(X_val_lyrics)
 
     # Concatenate them back to their original form, but scaled
     X_train = np.concatenate([X_train_audio, X_train_lyrics], axis=1)
@@ -129,7 +129,7 @@ def scale_pca(data: dict):
 
     joblib.dump(ipca, PCA_MODEL)
     # Save the trained scalers for prediction
-    joblib.dump(pca_lyric_scaler, PCA_SCALER)
+    # joblib.dump(pca_lyric_scaler, PCA_SCALER)
 
     data = {
         "train": (X_train, y_train),

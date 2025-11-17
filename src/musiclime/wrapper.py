@@ -141,12 +141,14 @@ class MusicLIMEPredictor:
         pca_model = joblib.load("models/fusion/pca.pkl")
         reduced_lyrics_batch = pca_model.transform(scaled_lyrics_batch)  # (batch, 512)
 
+        # NOTE: Scaling after PCA produces underperforming models compared to non-scaling.
+        # One can toggle it on for experimentation/testing purposes.
         # Step 5: Apply scaler to PCA-scaled lyrics batch
-        print("[MusicLIME] Reapplying scaler to PCA-scaled batch")
-        pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
-        reduced_lyrics_batch = pca_scaler.transform(
-            reduced_lyrics_batch
-        )  # (batch, 512)
+        # print("[MusicLIME] Reapplying scaler to PCA-scaled batch")
+        # pca_scaler = joblib.load("models/fusion/pca_scaler.pkl")
+        # reduced_lyrics_batch = pca_scaler.transform(
+        #     reduced_lyrics_batch
+        # )  # (batch, 512)
 
         # Step 6: Concatenate features
         combined_features_batch = np.concatenate(

@@ -11,7 +11,7 @@
   <p align="center">
     MusicLIME and Multimodal MLP Framework For Explainable Classification Of AI-Generated And Human-Composed Music
     <br />
-    <a href="https://drive.google.com/file/d/1NzKCOHclJNt3UaERnz-RaqS20Rzl5E_c/view?usp=sharing"><strong>Explore the paper »</strong></a>
+    <a href="https://drive.google.com/file/d/19K9CYZCEFnmXdphUszIZlbtEt3ZQbNn9/view?usp=sharings"><strong>Explore the paper »</strong></a>
     <br />
     <br />
     <a href="https://bach-or-bot-tool.vercel.app/">View Demo</a>

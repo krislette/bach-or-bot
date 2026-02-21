@@ -11,7 +11,7 @@
   <p align="center">
     MusicLIME and Multimodal MLP Framework For Explainable Classification Of AI-Generated And Human-Composed Music
     <br />
-    <a href="https://drive.google.com/file/d/132gWKb6OsOgqYAiq3chzpTqNo24Ob_AQ/view?usp=sharing"><strong>Explore the paper »</strong></a>
+    <a href="https://drive.google.com/file/d/1NzKCOHclJNt3UaERnz-RaqS20Rzl5E_c/view?usp=sharing"><strong>Explore the paper »</strong></a>
     <br />
     <br />
     <a href="https://bach-or-bot-tool.vercel.app/">View Demo</a>
@@ -486,9 +486,9 @@ poetry run pytest tests/
 Run specific test modules:
 
 ```bash
-poetry run pytest tests/test_musiclime.py
-poetry run pytest tests/test_spectttra.py
-poetry run pytest tests/test_mlp.py
+poetry run pytest -m tests.test_musiclime
+poetry run pytest -m tests.test_spectttra
+poetry run pytest -m tests.test_mlp
 ```
 
 ### Code Quality
@@ -505,10 +505,9 @@ The project follows Python best practices:
 
 This project was developed by a collaborative team of researchers and developers:
 
-- **Acelle Krislette Rosales** (acellekrislette@gmail.com) - MusicLIME implementation, explainability features, API and containerization, and final optimizations
-- **Hans Christian Queja** (hansqueja8@gmail.com) - Preprocessing, SpecTTTra integration, training, and final optimizations
+- **Acelle Krislette Rosales** (acellekrislette@gmail.com) - MusicLIME implementation, explainability features, API and containerization, final optimizations, and deployment
+- **Hans Christian Queja** (hansqueja8@gmail.com) - Preprocessing, LLM2Vec Optimization, SpecTTTra integration, training, and final optimizations
 - **Regina Bonifacio** (bonifacioregina06@gmail.com) - MLP classifier architecture and training, and pytest testing
-- **Sean Matthew Sinalubong** (s3amatth3wsinalubong@gmail.com) - LLM2Vec implementation and training
 - **Syruz Ken Domingo** (syruzkenc.domingo@gmail.com) - SpecTTTra implementation and optimization
 
 ## Citation
@@ -518,7 +517,7 @@ If you use this work in your research, please cite:
 ```bibtex
 @software{bach_or_bot_2025,
    title = {Bach or Bot: MusicLIME and Multimodal MLP Framework For Explainable Classification Of AI-Generated And Human-Composed Music},
-   author = {Rosales, Acelle Krislette and Queja, Hans Christian and Bonifacio, Regina and Sinalubong, Sean Matthew and Domingo, Syruz Ken},
+   author = {Bonifacio, Regina and Domingo, Syruz Ken and Queja, Hans Christian and Rosales, Acelle Krislette},
    year = {2025},
    url = {https://github.com/krislette/bach-or-bot}
 }
@@ -526,7 +525,7 @@ If you use this work in your research, please cite:
 
 ## Acknowledgments
 
-We acknowledge the research contributions that made this project possible, particularly the authors of [SpecTTTra](https://arxiv.org/abs/2408.14080), [LLM2Vec](https://arxiv.org/abs/2404.05961), and [MusicLIME](https://arxiv.org/abs/2409.10496). This work builds upon their foundational research in audio processing, natural language processing, and explainable AI for music understanding.
+We acknowledge the research contributions that made this project possible, particularly the authors of [SpecTTTra](https://arxiv.org/abs/2408.14080), [LLM2Vec](https://arxiv.org/abs/2404.05961), and [MusicLIME](https://arxiv.org/abs/2409.10496). This work builds upon their foundational research and provided source code/notebooks in audio processing, natural language processing, and explainable AI for music understanding.
 
 Special thanks to the open-source community for providing the tools and libraries that enabled this research, including OpenUnmix for source separation, LIME for explainability frameworks, and the broader PyTorch ecosystem for deep learning infrastructure.
 
